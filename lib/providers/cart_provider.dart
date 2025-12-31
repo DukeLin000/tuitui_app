@@ -1,3 +1,4 @@
+// lib/providers/cart_provider.dart
 import 'package:flutter/foundation.dart';
 import '../models/cart_item.dart';
 
@@ -8,7 +9,7 @@ class CartProvider extends ChangeNotifier {
   // 1. 讀取購物車列表 (唯讀)
   List<CartItem> get items => List.unmodifiable(_items);
 
-  // 2. 取得商品總數 (用於 TabBar 紅點或購物車標題)
+  // 2. 取得商品總數
   int get itemCount => _items.length;
 
   // 3. 計算總金額
@@ -20,26 +21,52 @@ class CartProvider extends ChangeNotifier {
     return total;
   }
 
-  // 4. 加入購物車邏輯
-  void addToCart(String id, String name, int price, String image) {
-    // 檢查商品是否已存在
-    final index = _items.indexWhere((item) => item.id == id);
-    
-    if (index >= 0) {
-      // 如果已存在，數量 +1
-      _items[index].quantity += 1;
+  // 4. 加入購物車邏輯 [修改：支援商品類型、預約時間與人數]
+  void addToCart(
+    String id, 
+    String name, 
+    int price, 
+    String image, 
+    {
+      ItemType type = ItemType.product, 
+      String? bookingDate,
+      int? peopleCount, // [新增] 接收預約人數
+    }
+  ) {
+    if (type == ItemType.product) {
+      // 一般商品：檢查 ID 是否存在且類型相同，存在則數量 +1
+      final index = _items.indexWhere((item) => item.id == id && item.type == ItemType.product);
+      
+      if (index >= 0) {
+        _items[index].quantity += 1;
+      } else {
+        _items.add(CartItem(
+          id: id, 
+          name: name, 
+          price: price, 
+          image: image, 
+          quantity: 1,
+          type: type,
+        ));
+      }
     } else {
-      // 如果不存在，新增一筆
+      // 預約服務：視為獨立項目
+      // 生成 Unique ID 避免相同店家的不同預約在刪除時發生衝突
+      final uniqueId = "${id}_${DateTime.now().millisecondsSinceEpoch}";
+      
       _items.add(CartItem(
-        id: id, 
+        id: uniqueId, 
         name: name, 
         price: price, 
         image: image, 
-        quantity: 1
+        quantity: 1,
+        type: type,
+        bookingDate: bookingDate,
+        peopleCount: peopleCount, // [新增] 存入預約人數
       ));
     }
     
-    // 關鍵：通知所有監聽者 (UI) 更新畫面
+    // 通知 UI 更新
     notifyListeners();
   }
 
@@ -57,7 +84,7 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  // 6. 清空購物車 (例如結帳後)
+  // 6. 清空購物車
   void clear() {
     _items.clear();
     notifyListeners();

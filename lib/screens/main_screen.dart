@@ -1,18 +1,18 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
-// import '../models/cart_item.dart'; // [移除] 這裡已經不需要 CartItem 模型了
-
+import '../providers/auth_provider.dart'; // [新增] 引入 AuthProvider
 import '../widgets/map_view_overlay.dart';
 import '../widgets/user_profile_modal.dart';
 import '../widgets/cart_overlay.dart';
 
-// 引入所有拆分出去的頁面
+// 引入頁面
 import 'home_screen.dart';
 import 'market_screen.dart';
 import 'create_post_screen.dart';
 import 'profile_screen.dart';
 import 'chat_tab_screen.dart';
+import 'login_screen.dart'; // [新增] 引入登入頁面
 
 // 設定頁面
 class SettingsScreen extends StatelessWidget {
@@ -46,6 +46,33 @@ class _MainScreenState extends State<MainScreen> {
   bool _showCart = false;
   Map<String, dynamic>? _selectedUser;
 
+  // [新增] 處理 Tab 點擊的攔截邏輯 (需要登入才能看的頁面)
+  void _onTabTapped(int index) async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+
+    // 定義哪些 Tab 需要登入才能看 (2: 發布, 3: 聊天, 4: 個人)
+    if (!auth.isLoggedIn && (index == 2 || index == 3 || index == 4)) {
+      
+      // 跳轉到登入頁面，並等待回傳結果
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+
+      // 如果登入成功 (result 為 true)，則自動切換到目標 Tab
+      if (result == true) {
+        setState(() {
+          _selectedIndex = index;
+        });
+      }
+    } else {
+      // 已經登入，或點擊的是公開頁面 (首頁、市集)，直接切換
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Widget bodyContent;
@@ -58,7 +85,6 @@ class _MainScreenState extends State<MainScreen> {
         ); 
         break;
       case 1: 
-        // [修正] 移除了 cartItems 參數
         bodyContent = MarketScreen(
           onOpenCart: () => setState(() => _showCart = true),
           onOpenMap: () => setState(() => _showMapView = true),
@@ -95,15 +121,15 @@ class _MainScreenState extends State<MainScreen> {
           
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _selectedIndex,
-            onTap: (idx) => setState(() => _selectedIndex = idx),
+            onTap: _onTabTapped, // [關鍵] 使用我們自定義的攔截方法
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.white,
             selectedItemColor: Colors.purple,
             unselectedItemColor: Colors.grey,
-            items: [ // [修改] 這裡移除 const，因為我們要動態讀取 Provider
+            items: [
               const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: '推推'),
               
-              // [優化] 市集 Tab 加上購物車紅點
+              // [修正] 這裡修正了 Consumer 的完整寫法，加上紅點邏輯
               BottomNavigationBarItem(
                 icon: Consumer<CartProvider>(
                   builder: (context, cart, child) {
