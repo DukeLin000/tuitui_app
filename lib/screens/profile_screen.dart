@@ -1,6 +1,8 @@
 // lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
+import '../models/waterfall_item.dart'; // [新增] 必須引入這個 Model
 import '../widgets/waterfall_feed.dart';
+import '../widgets/responsive_container.dart'; // [新增] 引入 RWD 容器
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -57,15 +59,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        // [RWD] 標題置中限制寬度
-        title: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: const Text("Me", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          ),
+        // [RWD] 標題置中限制寬度 (使用 ResponsiveContainer)
+        title: const ResponsiveContainer(
+          child: Text("Me", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         ),
         actions: [
-          // 這裡的按鈕可以保持在最右邊，或者如果您希望它們也跟著內容置中，可以用同樣的 Center 技巧包起來
           IconButton(onPressed: () {}, icon: const Icon(Icons.qr_code, color: Colors.black)),
           IconButton(onPressed: () {}, icon: const Icon(Icons.share_outlined, color: Colors.black)),
           IconButton(onPressed: widget.onSettingsTap, icon: const Icon(Icons.settings_outlined, color: Colors.black)),
@@ -76,83 +74,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.only(bottom: 20),
         children: [
           // 1. 用戶資料區塊 (Profile Info)
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
-              child: Container(
-                color: Colors.white, // 卡片白色背景
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(radius: 40, backgroundImage: NetworkImage(_avatar)),
-                        const SizedBox(width: 24),
-                        const Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _ProfileStatItem(count: "18", label: "Following"),
-                              _ProfileStatItem(count: "32", label: "Followers"),
-                              _ProfileStatItem(count: "128", label: "Like & Save"),
-                            ],
-                          ),
-                        )
-                      ],
+          // [修改] 使用 ResponsiveContainer
+          ResponsiveContainer(
+            child: Container(
+              color: Colors.white, // 卡片白色背景
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(radius: 40, backgroundImage: NetworkImage(_avatar)),
+                      const SizedBox(width: 24),
+                      const Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _ProfileStatItem(count: "18", label: "Following"),
+                            _ProfileStatItem(count: "32", label: "Followers"),
+                            _ProfileStatItem(count: "128", label: "Like & Save"),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(_name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(_bio, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Edit Profile 按鈕
+                  SizedBox(
+                    width: double.infinity, 
+                    child: _ProfileActionButton(
+                      text: "Edit Profile", 
+                      onTap: _navigateToEditProfile, 
                     ),
-                    const SizedBox(height: 16),
-                    Text(_name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text(_bio, style: const TextStyle(color: Colors.grey, fontSize: 14)),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // Edit Profile 按鈕
-                    SizedBox(
-                      width: double.infinity, 
-                      child: _ProfileActionButton(
-                        text: "Edit Profile", 
-                        onTap: _navigateToEditProfile, 
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
           
           // 2. 底部作品區 (Works Tab & Feed)
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
-              child: Container(
-                color: Colors.white,
-                child: Column(
-                  children: [
-                    // Tabs
-                    Container(
-                      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey[200]!))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          TextButton(onPressed: (){}, child: const Text("Notes", style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold))),
-                          TextButton(onPressed: (){}, child: const Text("Collect", style: TextStyle(color: Colors.grey))),
-                          TextButton(onPressed: (){}, child: const Text("Likes", style: TextStyle(color: Colors.grey))),
-                        ],
-                      ),
+          // [修改] 使用 ResponsiveContainer
+          ResponsiveContainer(
+            child: Container(
+              color: Colors.white,
+              child: Column(
+                children: [
+                  // Tabs
+                  Container(
+                    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey[200]!))),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        TextButton(onPressed: (){}, child: const Text("Notes", style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold))),
+                        TextButton(onPressed: (){}, child: const Text("Collect", style: TextStyle(color: Colors.grey))),
+                        TextButton(onPressed: (){}, child: const Text("Likes", style: TextStyle(color: Colors.grey))),
+                      ],
                     ),
-                    
-                    // 瀑布流作品集
-                    // [RWD] 這裡也要限制 padding，與上面對齊
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0), 
-                      child: WaterfallFeed(items: _userWorks),
-                    ),
-                  ],
-                ),
+                  ),
+                  
+                  // 瀑布流作品集
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0), 
+                    child: WaterfallFeed(items: _userWorks),
+                  ),
+                ],
               ),
             ),
           )

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'chat_room_screen.dart';
+import '../widgets/responsive_container.dart'; // [新增] 引入 RWD 容器
 
 class ChatTabScreen extends StatefulWidget {
   const ChatTabScreen({super.key});
@@ -51,16 +52,13 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
   Widget build(BuildContext context) {
     // 如果有選中的聊天對象，顯示聊天室
     if (_activeChatId != null) {
-      // [RWD 優化] 即使進入聊天室，在 Web 上也要限制寬度並置中
+      // [RWD 優化] 使用 ResponsiveContainer 包裹聊天室
       return Container(
         color: Colors.grey[50], // 兩側背景色
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: ChatRoomScreen(
-              chatId: _activeChatId!,
-              onBack: () => setState(() => _activeChatId = null),
-            ),
+        child: ResponsiveContainer(
+          child: ChatRoomScreen(
+            chatId: _activeChatId!,
+            onBack: () => setState(() => _activeChatId = null),
           ),
         ),
       );
@@ -71,96 +69,96 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
       backgroundColor: Colors.grey[50], // 1. 背景改為淺灰，與 Home 一致
       
       appBar: AppBar(
-        title: const Text("訊息", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        // [RWD 優化] 標題使用 ResponsiveContainer
+        title: const ResponsiveContainer(
+          child: Text("訊息", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        ),
         backgroundColor: Colors.grey[50], // AppBar 背景同色
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true, // 標題置中
       ),
       
-      // 2. [關鍵修改] 內容置中 + 限制寬度 500
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: Container(
-            color: Colors.white, // 中間列表區域為白色，模擬手機視窗
-            child: ListView.separated(
-              itemCount: _mockChats.length,
-              // 分隔線，略過頭像位置
-              separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFEEEEEE), indent: 72),
-              itemBuilder: (context, index) {
-                final chat = _mockChats[index];
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  // 頭像
-                  leading: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 26,
-                        backgroundImage: NetworkImage(chat['avatar']),
-                        backgroundColor: Colors.grey[200],
-                      ),
-                      // 未讀紅點 (右上角)
-                      if (chat['unread'] > 0)
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  // 名稱
-                  title: Text(
-                    chat['name'],
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  // 訊息預覽
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Text(
-                      chat['message'],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+      // 2. [關鍵修改] 使用 ResponsiveContainer 取代原本的 Center + ConstrainedBox
+      body: ResponsiveContainer(
+        child: Container(
+          color: Colors.white, // 中間列表區域為白色，模擬手機視窗
+          child: ListView.separated(
+            itemCount: _mockChats.length,
+            // 分隔線，略過頭像位置
+            separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFEEEEEE), indent: 72),
+            itemBuilder: (context, index) {
+              final chat = _mockChats[index];
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                // 頭像
+                leading: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundImage: NetworkImage(chat['avatar']),
+                      backgroundColor: Colors.grey[200],
                     ),
-                  ),
-                  // 時間與未讀數
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        chat['time'],
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                      if (chat['unread'] > 0) ...[
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    // 未讀紅點 (右上角)
+                    if (chat['unread'] > 0)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 12,
+                          height: 12,
                           decoration: BoxDecoration(
                             color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${chat['unread']}',
-                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
                           ),
                         ),
-                      ],
-                    ],
+                      ),
+                  ],
+                ),
+                // 名稱
+                title: Text(
+                  chat['name'],
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                // 訊息預覽
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    chat['message'],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   ),
-                  onTap: () => setState(() => _activeChatId = chat['id']),
-                );
-              },
-            ),
+                ),
+                // 時間與未讀數
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      chat['time'],
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    if (chat['unread'] > 0) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${chat['unread']}',
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                onTap: () => setState(() => _activeChatId = chat['id']),
+              );
+            },
           ),
         ),
       ),

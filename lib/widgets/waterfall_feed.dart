@@ -1,24 +1,8 @@
+// lib/widgets/waterfall_feed.dart
 import 'package:flutter/material.dart';
+import '../models/waterfall_item.dart'; // [新增] 匯入 Model
 
-class WaterfallItem {
-  final String id;
-  final String image;
-  final String title;
-  final String authorName;
-  final String authorAvatar;
-  final int likes;
-  final double aspectRatio;
-
-  const WaterfallItem({
-    required this.id,
-    required this.image,
-    required this.title,
-    required this.authorName,
-    required this.authorAvatar,
-    required this.likes,
-    required this.aspectRatio,
-  });
-}
+// [已刪除] WaterfallItem 類別定義
 
 class WaterfallFeed extends StatelessWidget {
   final List<WaterfallItem> items;
@@ -27,33 +11,25 @@ class WaterfallFeed extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. [關鍵修改] 外層包這兩個 Widget，模擬 React 的 layout 效果
-    return Center( // 讓內容在 Web 大螢幕上置中
+    // ... (原本的 build 內容保持不變，不用動)
+    return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500), // 限制最大寬度，避免在電腦上拉太寬
+        constraints: const BoxConstraints(maxWidth: 500),
         child: GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          
-          padding: EdgeInsets.zero, 
-
+          padding: EdgeInsets.zero,
           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            // 2. [斷點調整] 改為 260。
-            // 在手機 (寬~390) 是 2 欄。
-            // 在 Web (限寬 500) 500/2 = 250 < 260，所以也會保持「2 欄」，不會變太小。
-            maxCrossAxisExtent: 260, 
-            
-            // 3. [比例] 0.8 讓卡片不會太瘦長，視覺較舒適
-            childAspectRatio: 0.8,  
-            
-            crossAxisSpacing: 12,    
-            mainAxisSpacing: 12,     
+            maxCrossAxisExtent: 260,
+            childAspectRatio: 0.8,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
           ),
-          
           itemCount: items.length,
           itemBuilder: (context, index) {
             final item = items[index];
             return Container(
+              // ... (保持不變)
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/responsive_container.dart'; // [新增] 引入 RWD 容器
 
 // ---------------------------------------------------------------------------
 // 第一階段：素材選擇 (Media Picker) - 改為淺色模式
@@ -60,83 +61,81 @@ class _CreatePostScreenState extends State<CreatePostScreen> with SingleTickerPr
           )
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: Column(
-            children: [
-              // 1. 預覽區域
-              Expanded(
-                flex: 5,
-                child: Container(
-                  width: double.infinity,
-                  color: Colors.grey[100], // [修改] 預覽底色改為淺灰
-                  child: _selectedIndex != -1 
-                    ? Container(color: _mockGallery[_selectedIndex], child: const Center(child: Text("預覽圖片", style: TextStyle(color: Colors.white))))
-                    : const Center(child: Icon(Icons.camera_alt, color: Colors.grey, size: 64)),
-                ),
+      // [RWD 優化] 使用 ResponsiveContainer
+      body: ResponsiveContainer(
+        child: Column(
+          children: [
+            // 1. 預覽區域
+            Expanded(
+              flex: 5,
+              child: Container(
+                width: double.infinity,
+                color: Colors.grey[100], // [修改] 預覽底色改為淺灰
+                child: _selectedIndex != -1 
+                  ? Container(color: _mockGallery[_selectedIndex], child: const Center(child: Text("預覽圖片", style: TextStyle(color: Colors.white))))
+                  : const Center(child: Icon(Icons.camera_alt, color: Colors.grey, size: 64)),
               ),
-              
-              // 2. 底部功能區
-              Expanded(
-                flex: 4,
-                child: Column(
-                  children: [
-                    // 工具列 (最近項目)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      color: Colors.white, // [修改]
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text("最近項目", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)), // [修改]
-                          IconButton(icon: const Icon(Icons.camera_alt_outlined, color: Colors.black), onPressed: (){}), // [修改]
-                        ],
-                      ),
+            ),
+            
+            // 2. 底部功能區
+            Expanded(
+              flex: 4,
+              child: Column(
+                children: [
+                  // 工具列 (最近項目)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    color: Colors.white, // [修改]
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("最近項目", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)), // [修改]
+                        IconButton(icon: const Icon(Icons.camera_alt_outlined, color: Colors.black), onPressed: (){}), // [修改]
+                      ],
                     ),
-                    
-                    // 相冊網格
-                    Expanded(
-                      child: GridView.builder(
-                        padding: const EdgeInsets.all(2),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 4,
-                          crossAxisSpacing: 2,
-                          mainAxisSpacing: 2,
-                        ),
-                        itemCount: _mockGallery.length,
-                        itemBuilder: (context, index) {
-                          return GestureDetector(
-                            onTap: () => setState(() => _selectedIndex = index),
-                            child: Container(
-                              color: _mockGallery[index],
-                              child: _selectedIndex == index 
-                                ? Container(color: Colors.black54, child: const Icon(Icons.check, color: Colors.white))
-                                : null,
-                            ),
-                          );
-                        },
+                  ),
+                  
+                  // 相冊網格
+                  Expanded(
+                    child: GridView.builder(
+                      padding: const EdgeInsets.all(2),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4,
+                        crossAxisSpacing: 2,
+                        mainAxisSpacing: 2,
                       ),
+                      itemCount: _mockGallery.length,
+                      itemBuilder: (context, index) {
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedIndex = index),
+                          child: Container(
+                            color: _mockGallery[index],
+                            child: _selectedIndex == index 
+                              ? Container(color: Colors.black54, child: const Icon(Icons.check, color: Colors.white))
+                              : null,
+                          ),
+                        );
+                      },
                     ),
-                    
-                    // 底部模式切換 (圖片/視頻/文字)
-                    Container(
-                      color: Colors.white, // [修改]
-                      height: 50,
-                      child: TabBar(
-                        controller: _tabController,
-                        indicatorColor: Colors.black, // [修改] 指示器改為黑色 (更簡約)
-                        indicatorSize: TabBarIndicatorSize.label,
-                        labelColor: Colors.black, // [修改] 選中文字黑色
-                        unselectedLabelColor: Colors.grey,
-                        tabs: const [Tab(text: "圖片"), Tab(text: "視頻"), Tab(text: "文字")],
-                      ),
+                  ),
+                  
+                  // 底部模式切換 (圖片/視頻/文字)
+                  Container(
+                    color: Colors.white, // [修改]
+                    height: 50,
+                    child: TabBar(
+                      controller: _tabController,
+                      indicatorColor: Colors.black, // [修改] 指示器改為黑色 (更簡約)
+                      indicatorSize: TabBarIndicatorSize.label,
+                      labelColor: Colors.black, // [修改] 選中文字黑色
+                      unselectedLabelColor: Colors.grey,
+                      tabs: const [Tab(text: "圖片"), Tab(text: "視頻"), Tab(text: "文字")],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -184,63 +183,61 @@ class PhotoEditorScreen extends StatelessWidget {
           const SizedBox(width: 16),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: Column(
-            children: [
-              // 圖片編輯區
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.all(16),
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: imageColor,
-                    borderRadius: BorderRadius.circular(12),
-                    // [視覺優化] 加一點陰影讓圖片浮起來
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      const Center(child: Text("圖片編輯預覽", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, shadows: [Shadow(blurRadius: 4, color: Colors.black54)]))),
-                      Positioned(
-                        top: 100, left: 100,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), borderRadius: BorderRadius.circular(4)),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.location_on, color: Colors.white, size: 12),
-                              SizedBox(width: 4),
-                              Text("標籤: OOTD", style: TextStyle(color: Colors.white, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
-              
-              // 底部工具列 (配樂、貼紙、文字...)
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                color: Colors.white, // [修改]
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _EditorTool(icon: Icons.music_note, label: "配樂"),
-                    _EditorTool(icon: Icons.text_fields, label: "文字"),
-                    _EditorTool(icon: Icons.emoji_emotions_outlined, label: "貼紙"),
-                    _EditorTool(icon: Icons.filter_vintage, label: "濾鏡"),
-                    _EditorTool(icon: Icons.tune, label: "調節"),
+      // [RWD 優化] 使用 ResponsiveContainer
+      body: ResponsiveContainer(
+        child: Column(
+          children: [
+            // 圖片編輯區
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.all(16),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: imageColor,
+                  borderRadius: BorderRadius.circular(12),
+                  // [視覺優化] 加一點陰影讓圖片浮起來
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))
                   ],
                 ),
-              )
-            ],
-          ),
+                child: Stack(
+                  children: [
+                    const Center(child: Text("圖片編輯預覽", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, shadows: [Shadow(blurRadius: 4, color: Colors.black54)]))),
+                    Positioned(
+                      top: 100, left: 100,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), borderRadius: BorderRadius.circular(4)),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.location_on, color: Colors.white, size: 12),
+                            SizedBox(width: 4),
+                            Text("標籤: OOTD", style: TextStyle(color: Colors.white, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            ),
+            
+            // 底部工具列 (配樂、貼紙、文字...)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              color: Colors.white, // [修改]
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _EditorTool(icon: Icons.music_note, label: "配樂"),
+                  _EditorTool(icon: Icons.text_fields, label: "文字"),
+                  _EditorTool(icon: Icons.emoji_emotions_outlined, label: "貼紙"),
+                  _EditorTool(icon: Icons.filter_vintage, label: "濾鏡"),
+                  _EditorTool(icon: Icons.tune, label: "調節"),
+                ],
+              ),
+            )
+          ],
         ),
       ),
     );
@@ -346,70 +343,68 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
             )
           ],
         ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        // [RWD 優化] 使用 ResponsiveContainer
+        body: ResponsiveContainer(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 100, height: 100,
+                      decoration: BoxDecoration(
+                        color: widget.imageColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Center(child: Icon(Icons.image, color: Colors.white)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        maxLength: 20,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          hintText: "填寫標題 會吸引更多人喔～",
+                          hintStyle: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.bold),
+                          border: InputBorder.none,
+                          counterText: "", 
+                        ),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 30),
+                TextField(
+                  maxLength: 1000,
+                  maxLines: 8,
+                  decoration: const InputDecoration(
+                    hintText: "添加正文\n#話題 #穿搭",
+                    hintStyle: TextStyle(color: Colors.grey),
+                    border: InputBorder.none,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
                     children: [
-                      Container(
-                        width: 100, height: 100,
-                        decoration: BoxDecoration(
-                          color: widget.imageColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Center(child: Icon(Icons.image, color: Colors.white)),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          maxLength: 20,
-                          maxLines: 3,
-                          decoration: const InputDecoration(
-                            hintText: "填寫標題 會吸引更多人喔～",
-                            hintStyle: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.bold),
-                            border: InputBorder.none,
-                            counterText: "", 
-                          ),
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
+                      _ActionChip(icon: Icons.grid_3x3, label: "話題"),
+                      const SizedBox(width: 8),
+                      _ActionChip(icon: Icons.alternate_email, label: "用戶"),
+                      const SizedBox(width: 8),
+                      _ActionChip(icon: Icons.location_on_outlined, label: "添加地點"),
                     ],
                   ),
-                  const Divider(height: 30),
-                  TextField(
-                    maxLength: 1000,
-                    maxLines: 8,
-                    decoration: const InputDecoration(
-                      hintText: "添加正文\n#話題 #穿搭",
-                      hintStyle: TextStyle(color: Colors.grey),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _ActionChip(icon: Icons.grid_3x3, label: "話題"),
-                        const SizedBox(width: 8),
-                        _ActionChip(icon: Icons.alternate_email, label: "用戶"),
-                        const SizedBox(width: 8),
-                        _ActionChip(icon: Icons.location_on_outlined, label: "添加地點"),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 30),
-                  const _OptionTile(icon: Icons.public, title: "權限設定", value: "公開"),
-                  const _OptionTile(icon: Icons.download, title: "保存到相冊", value: "", isSwitch: true),
-                  const _OptionTile(icon: Icons.settings, title: "高級設定", value: ""),
-                ],
-              ),
+                ),
+                const Divider(height: 30),
+                const _OptionTile(icon: Icons.public, title: "權限設定", value: "公開"),
+                const _OptionTile(icon: Icons.download, title: "保存到相冊", value: "", isSwitch: true),
+                const _OptionTile(icon: Icons.settings, title: "高級設定", value: ""),
+              ],
             ),
           ),
         ),
