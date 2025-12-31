@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // [新增] 引入 provider 套件
+import 'providers/cart_provider.dart';   // [新增] 引入 CartProvider
 import 'screens/main_screen.dart';
 import 'screens/login_screen.dart';
 
 void main() {
-  runApp(const TuituiApp());
+  runApp(
+    // [修改] 使用 MultiProvider 包裹整個 App，讓所有頁面都能存取 Provider
+    MultiProvider(
+      providers: [
+        // 在這裡註冊 CartProvider
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+      ],
+      child: const TuituiApp(),
+    ),
+  );
 }
 
 class TuituiApp extends StatefulWidget {

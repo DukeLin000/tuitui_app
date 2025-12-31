@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import '../models/cart_item.dart';
+import 'package:provider/provider.dart'; // [新增] 引入 Provider
+import '../providers/cart_provider.dart'; // [新增] 引入 CartProvider
 import '../widgets/waterfall_feed.dart';
-import '../models/waterfall_item.dart'; // [新增]
-import '../widgets/responsive_container.dart'; // [新增] 引入 RWD 容器
+import '../models/waterfall_item.dart'; 
+import '../widgets/responsive_container.dart';
 
 class MarketScreen extends StatefulWidget {
-  final List<CartItem> cartItems;
+  // [重構] 不再需要從外部傳入 cartItems，直接讀取 Provider
   final VoidCallback onOpenCart;
   final VoidCallback onOpenMap;
 
   const MarketScreen({
     super.key,
-    required this.cartItems,
     required this.onOpenCart,
     required this.onOpenMap,
+    // required this.cartItems, // [已移除]
   });
 
   @override
@@ -119,13 +120,12 @@ class _MarketScreenState extends State<MarketScreen> {
     final List<WaterfallItem> currentItems = _recommendationMap[_activeCategory] ?? _recommendationMap['For You'] ?? [];
 
     return Scaffold(
-      backgroundColor: Colors.grey[50], // 保持淺灰背景，與首頁一致
+      backgroundColor: Colors.grey[50], 
       
       appBar: AppBar(
         backgroundColor: Colors.grey[50],
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        // [AppBar 優化] 使用 ResponsiveContainer 限制搜尋框寬度
         title: ResponsiveContainer(
           child: Row(
             children: [
@@ -150,7 +150,7 @@ class _MarketScreenState extends State<MarketScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              // 購物車按鈕
+              // [重構] 購物車按鈕：使用 Consumer 監聽 Provider
               Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -158,18 +158,23 @@ class _MarketScreenState extends State<MarketScreen> {
                     icon: const Icon(Icons.shopping_cart_outlined, color: Colors.black54),
                     onPressed: widget.onOpenCart,
                   ),
-                  if (widget.cartItems.isNotEmpty)
-                    Positioned(
-                      right: 8, top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                        child: Text(
-                          '${widget.cartItems.length}',
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  // Consumer 會自動監聽 CartProvider 的變化
+                  Consumer<CartProvider>(
+                    builder: (context, cart, child) {
+                      if (cart.itemCount == 0) return const SizedBox.shrink();
+                      return Positioned(
+                        right: 8, top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                          child: Text(
+                            '${cart.itemCount}', // 顯示 Provider 中的數量
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
+                  ),
                 ],
               ),
               IconButton(
@@ -217,20 +222,17 @@ class _MarketScreenState extends State<MarketScreen> {
 
           const SizedBox(height: 10),
 
-          // 2. 子分類按鈕區 (Sub Categories)
-          // 只有當選中特定分類（且有子分類資料）時才顯示，避免 For You 頁面空空的
+          // 2. 子分類按鈕區
           if (_activeCategory != 'For You' && _subCategoryMap.containsKey(_activeCategory))
             ResponsiveContainer(
               padding: const EdgeInsets.all(16),
               child: Builder(
                 builder: (context) {
                   final subCats = _subCategoryMap[_activeCategory]!;
-                  // 只顯示前 10 個
                   final displayCats = subCats.take(10).toList();
                   
                   if (displayCats.isEmpty) return const SizedBox.shrink();
 
-                  // 簡單使用 Wrap 來排列子分類按鈕，自動換行
                   return Wrap(
                     spacing: 16,
                     runSpacing: 16,
@@ -239,7 +241,7 @@ class _MarketScreenState extends State<MarketScreen> {
                       label: item['label'] ?? '',
                       icon: item['icon'],
                       iconColor: Colors.grey[700]!,
-                      bgColor: Colors.white, // 白色按鈕背景
+                      bgColor: Colors.white,
                     )).toList(),
                   );
                 },
