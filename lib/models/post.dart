@@ -1,5 +1,5 @@
 // lib/models/post.dart
-import 'waterfall_item.dart'; // [新增] 引入目標 Model
+import 'waterfall_item.dart';
 
 class Post {
   final String id;
@@ -12,6 +12,9 @@ class Post {
   final int comments;
   final String timestamp;
   final bool isMerchant;
+  
+  // [新增] 記錄當前用戶是否已按讚
+  final bool isLikedByMe;
 
   const Post({
     required this.id,
@@ -24,19 +27,45 @@ class Post {
     required this.comments,
     required this.timestamp,
     this.isMerchant = false,
+    // [新增] 預設為 false
+    this.isLikedByMe = false,
   });
 
-  // [新增] 轉換方法：將 Post 轉為 WaterfallItem
-  // 這樣一來，任何地方拿到 Post 都可以直接轉成瀑布流需要的格式
-  WaterfallItem toWaterfallItem() {
-    // 使用 id 的 hashCode 來產生固定的隨機比例 (1.0 ~ 1.5)
-    // 這樣確保同一個 Post 每次轉換出來的高度都一樣，不會畫面亂跳
-    final double randomRatio = (id.hashCode % 5 + 10) / 10.0;
+  // [新增] copyWith 方法：用來產生修改後的新物件 (因為 Post 是 immutable 的)
+  Post copyWith({
+    String? id,
+    String? authorName,
+    String? authorAvatar,
+    bool? verified,
+    String? content,
+    String? image,
+    int? likes,
+    int? comments,
+    String? timestamp,
+    bool? isMerchant,
+    bool? isLikedByMe,
+  }) {
+    return Post(
+      id: id ?? this.id,
+      authorName: authorName ?? this.authorName,
+      authorAvatar: authorAvatar ?? this.authorAvatar,
+      verified: verified ?? this.verified,
+      content: content ?? this.content,
+      image: image ?? this.image,
+      likes: likes ?? this.likes,
+      comments: comments ?? this.comments,
+      timestamp: timestamp ?? this.timestamp,
+      isMerchant: isMerchant ?? this.isMerchant,
+      isLikedByMe: isLikedByMe ?? this.isLikedByMe,
+    );
+  }
 
+  WaterfallItem toWaterfallItem() {
+    final double randomRatio = (id.hashCode % 5 + 10) / 10.0;
     return WaterfallItem(
       id: id,
       image: image,
-      title: content, // 將貼文內容當作標題
+      title: content,
       authorName: authorName,
       authorAvatar: authorAvatar,
       likes: likes,

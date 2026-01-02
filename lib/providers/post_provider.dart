@@ -1,11 +1,10 @@
 // lib/providers/post_provider.dart
 import 'package:flutter/material.dart';
 import '../models/post.dart';
-import '../models/waterfall_item.dart'; // 確保引入了 WaterfallItem Model
+import '../models/waterfall_item.dart';
 
 class PostProvider extends ChangeNotifier {
   // 1. 核心資料來源 (模擬後端資料庫)
-  // 我們將原本分散在 HomeScreen 的假資料整合到這裡，作為唯一的資料源
   final List<Post> _items = [
     // --- 來自追蹤頁的資料 ---
     const Post(
@@ -84,25 +83,39 @@ class PostProvider extends ChangeNotifier {
     ),
   ];
 
-  // 2. [Getter 1] 給「追蹤頁」使用 (直接回傳 Post 列表)
+  // 2. 獲取 Post 列表
   List<Post> get items => [..._items];
 
-  // 3. [Getter 2] 給「發現頁」使用 (自動將 Post 轉換為 WaterfallItem)
-  // [修改] 這裡直接呼叫我們剛在 Post Model 中新增的 `toWaterfallItem` 方法
-  // 這樣一來，發布新貼文後，發現頁也會自動更新！
+  // 3. 獲取 WaterfallItem 列表
   List<WaterfallItem> get discoveryItems {
     return _items.map((post) => post.toWaterfallItem()).toList();
   }
 
-  // 4. 發布貼文 (新增)
+  // 4. 發布貼文
   void addPost(Post post) {
-    _items.insert(0, post); // 加在列表最上面
-    notifyListeners(); // 通知 UI (HomeScreen) 更新
+    _items.insert(0, post);
+    notifyListeners();
   }
 
   // 5. 按讚/取消讚 (同步狀態)
   void toggleLike(String postId) {
-    // 這裡先做簡單的通知更新，實際邏輯需要處理 Post 物件的狀態改變 (copyWith)
-    notifyListeners();
+    // 1. 找到目標貼文的索引
+    final index = _items.indexWhere((p) => p.id == postId);
+    
+    if (index != -1) {
+      final oldPost = _items[index];
+      // 2. 計算新的按讚數與狀態
+      final newIsLiked = !oldPost.isLikedByMe;
+      final newLikeCount = oldPost.likes + (newIsLiked ? 1 : -1);
+
+      // 3. 使用 copyWith 產生新物件並替換舊物件
+      _items[index] = oldPost.copyWith(
+        isLikedByMe: newIsLiked,
+        likes: newLikeCount,
+      );
+
+      // 4. 通知所有監聽者 (HomeScreen, ProfileScreen) 更新
+      notifyListeners();
+    }
   }
 }

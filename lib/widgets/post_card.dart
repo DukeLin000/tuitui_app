@@ -1,49 +1,47 @@
 // lib/widgets/post_card.dart
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart'; 
+import 'package:provider/provider.dart'; // [新增]
 import '../models/post.dart';
+import '../providers/post_provider.dart'; // [新增]
 import '../screens/profile/profile_screen.dart';
 import '../screens/shop/store_profile_screen.dart';
-// [新增] 引入詳情頁
 import '../screens/social/post_detail_screen.dart';
 
-class PostCard extends StatefulWidget {
+// [修改] 改為 StatelessWidget，因為狀態由外部 Provider 控制
+class PostCard extends StatelessWidget {
   final Post post;
   const PostCard({super.key, required this.post});
 
-  @override
-  State<PostCard> createState() => _PostCardState();
-}
-
-class _PostCardState extends State<PostCard> {
-  bool isLiked = false; // [新增] 本地按讚狀態
-  late int likeCount;
-
-  @override
-  void initState() {
-    super.initState();
-    likeCount = widget.post.likes;
-  }
-
-  void _toggleLike() {
-    setState(() {
-      isLiked = !isLiked;
-      likeCount += isLiked ? 1 : -1;
-    });
-  }
-
-  void _navigateToDetail() {
+  void _navigateToDetail(BuildContext context) {
     Navigator.push(
       context, 
-      MaterialPageRoute(builder: (_) => PostDetailScreen(post: widget.post))
+      MaterialPageRoute(builder: (_) => PostDetailScreen(post: post))
     );
   }
 
   void _navigateToProfile(BuildContext context) {
-    if (widget.post.isMerchant) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => StoreProfileScreen(merchantName: widget.post.authorName, avatarUrl: widget.post.authorAvatar)));
+    if (post.isMerchant) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StoreProfileScreen(
+            merchantName: post.authorName,
+            avatarUrl: post.authorAvatar,
+          ),
+        ),
+      );
     } else {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: widget.post.authorName, userName: widget.post.authorName, userAvatar: widget.post.authorAvatar)));
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProfileScreen(
+            userId: post.authorName, // 暫時用名字當 ID
+            userName: post.authorName,
+            userAvatar: post.authorAvatar,
+          ),
+        ),
+      );
     }
   }
 
@@ -62,15 +60,32 @@ class _PostCardState extends State<PostCard> {
             padding: const EdgeInsets.all(12.0),
             child: Row(
               children: [
-                GestureDetector(onTap: () => _navigateToProfile(context), child: CircleAvatar(backgroundImage: CachedNetworkImageProvider(widget.post.authorAvatar), radius: 20)),
+                GestureDetector(
+                  onTap: () => _navigateToProfile(context),
+                  child: CircleAvatar(
+                    backgroundImage: CachedNetworkImageProvider(post.authorAvatar),
+                    radius: 20,
+                  ),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: GestureDetector(
                     onTap: () => _navigateToProfile(context),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [Text(widget.post.authorName, style: const TextStyle(fontWeight: FontWeight.bold)), if (widget.post.verified) ...[const SizedBox(width: 4), const Icon(Icons.check_circle, size: 14, color: Colors.blue)]]),
-                      Text(widget.post.timestamp, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    ]),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(post.authorName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            if (post.verified) ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.check_circle, size: 14, color: Colors.blue),
+                            ]
+                          ],
+                        ),
+                        Text(post.timestamp, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
                   ),
                 ),
                 const Icon(Icons.more_horiz, color: Colors.grey),
@@ -78,15 +93,15 @@ class _PostCardState extends State<PostCard> {
             ),
           ),
 
-          // 2. 內容區域 (圖片 + 文字) -> [新增] 包裹 GestureDetector 點擊跳轉詳情
+          // 2. 內容區域 (圖片 + 文字)
           GestureDetector(
-            onTap: _navigateToDetail,
+            onTap: () => _navigateToDetail(context),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (widget.post.image.isNotEmpty)
+                if (post.image.isNotEmpty)
                   CachedNetworkImage(
-                    imageUrl: widget.post.image,
+                    imageUrl: post.image,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(height: 300, color: Colors.grey[200]),
@@ -95,7 +110,7 @@ class _PostCardState extends State<PostCard> {
                 
                 Padding(
                   padding: const EdgeInsets.all(12.0),
-                  child: Text(widget.post.content, style: const TextStyle(fontSize: 15), maxLines: 3, overflow: TextOverflow.ellipsis),
+                  child: Text(post.content, style: const TextStyle(fontSize: 15), maxLines: 3, overflow: TextOverflow.ellipsis),
                 ),
               ],
             ),
@@ -106,27 +121,35 @@ class _PostCardState extends State<PostCard> {
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: Row(
               children: [
-                // 愛心按鈕 (可點擊)
+                // [修改] 愛心按鈕邏輯
                 GestureDetector(
-                  onTap: _toggleLike,
+                  onTap: () {
+                    // 呼叫 Provider 更新狀態
+                    Provider.of<PostProvider>(context, listen: false).toggleLike(post.id);
+                  },
                   child: Row(
                     children: [
-                      Icon(isLiked ? Icons.favorite : Icons.favorite_border, color: isLiked ? Colors.red : Colors.black, size: 24),
+                      // 根據 post.isLikedByMe 決定圖示與顏色
+                      Icon(
+                        post.isLikedByMe ? Icons.favorite : Icons.favorite_border,
+                        color: post.isLikedByMe ? Colors.red : Colors.black,
+                        size: 24,
+                      ),
                       const SizedBox(width: 6),
-                      Text('$likeCount'),
+                      Text('${post.likes}'),
                     ],
                   ),
                 ),
                 const SizedBox(width: 20),
                 
-                // 留言按鈕 (跳轉詳情)
+                // 留言按鈕
                 GestureDetector(
-                  onTap: _navigateToDetail,
+                  onTap: () => _navigateToDetail(context),
                   child: Row(
                     children: [
                       const Icon(Icons.chat_bubble_outline, size: 22),
                       const SizedBox(width: 6),
-                      Text('${widget.post.comments}'),
+                      Text('${post.comments}'),
                     ],
                   ),
                 ),
