@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../widgets/responsive_container.dart';
 import '../../models/waterfall_item.dart';
 import '../../widgets/waterfall_feed.dart';
-import 'product_detail_screen.dart'; 
 
 class StoreProfileScreen extends StatefulWidget {
   final String merchantName;
