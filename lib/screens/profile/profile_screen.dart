@@ -1,14 +1,14 @@
 // lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; 
-import '../providers/auth_provider.dart'; 
-import '../models/waterfall_item.dart';
-import '../widgets/waterfall_feed.dart';
-import '../widgets/responsive_container.dart';
+import '../../providers/auth_provider.dart'; 
+import '../../models/waterfall_item.dart';
+import '../../widgets/waterfall_feed.dart';
+import '../../widgets/responsive_container.dart';
 import 'edit_profile_screen.dart';
 
 // [修改重點] 引入外部獨立的商家儀表板檔案
-import 'merchant/merchant_dashboard_screen.dart'; 
+import '../merchant/merchant_dashboard_screen.dart'; 
 
 // [注意] 這裡原本的 class MerchantDashboardScreen 已刪除，
 // 改為使用 import 進來的版本，讓檔案更乾淨。

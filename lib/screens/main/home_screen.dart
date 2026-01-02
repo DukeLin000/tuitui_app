@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/post.dart';
-import '../widgets/post_card.dart';
-import '../models/waterfall_item.dart'; // 1. 引入統一的 Model
-import '../widgets/waterfall_feed.dart'; // 2. 移除 'as feed'，直接使用 Widget
-import '../widgets/responsive_container.dart'; // 引入共用的 RWD 容器
+import '../../models/post.dart';
+import '../../widgets/post_card.dart';
+import '../../models/waterfall_item.dart'; // 1. 引入統一的 Model
+import '../../widgets/waterfall_feed.dart'; // 2. 移除 'as feed'，直接使用 Widget
+import '../../widgets/responsive_container.dart'; // 引入共用的 RWD 容器
 
 class HomeScreen extends StatelessWidget {
   final Function(Map<String, dynamic>) onUserTap;

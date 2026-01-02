@@ -1,19 +1,19 @@
 ﻿// lib/screens/main_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/cart_provider.dart';
-import '../providers/auth_provider.dart'; // 引入 AuthProvider
-import '../widgets/map_view_overlay.dart';
-import '../widgets/user_profile_modal.dart';
-import '../widgets/cart_overlay.dart';
+import '../../providers/cart_provider.dart';
+import '../../providers/auth_provider.dart'; // 引入 AuthProvider
+import '../../widgets/map_view_overlay.dart';
+import '../../widgets/user_profile_modal.dart';
+import '../../widgets/cart_overlay.dart';
 
 // 引入頁面
 import 'home_screen.dart';
-import 'market_screen.dart';
+import '../market/market_screen.dart';
 import 'create_post_screen.dart';
-import 'profile_screen.dart';
-import 'chat_tab_screen.dart';
-import 'login_screen.dart'; // 引入登入頁面
+import '../profile/profile_screen.dart';
+import '../chat/chat_tab_screen.dart';
+import '../auth/login_screen.dart'; // 引入登入頁面
 
 // ---------------------------------------------------------------------------
 // 設定頁面 (修改：加入商家模式切換)

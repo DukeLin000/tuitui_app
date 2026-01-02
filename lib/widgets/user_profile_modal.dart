@@ -1,6 +1,6 @@
 // lib/widgets/user_profile_modal.dart
 import 'package:flutter/material.dart';
-import '../screens/chat_room_screen.dart';
+import '../screens/chat/chat_room_screen.dart';
 import 'waterfall_feed.dart';
 import '../models/waterfall_item.dart'; // [新增] 引入 Model
 import 'responsive_container.dart'; // [新增] 引入 RWD 容器

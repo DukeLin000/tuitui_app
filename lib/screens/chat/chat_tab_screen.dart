@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'chat_room_screen.dart';
-import '../widgets/responsive_container.dart'; // [新增] 引入 RWD 容器
+import '../../widgets/responsive_container.dart'; // [新增] 引入 RWD 容器
 
 class ChatTabScreen extends StatefulWidget {
   const ChatTabScreen({super.key});

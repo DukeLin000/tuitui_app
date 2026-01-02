@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/responsive_container.dart'; // [新增] 引入 RWD 容器
+import '../../widgets/responsive_container.dart'; // [新增] 引入 RWD 容器
 
 // ---------------------------------------------------------------------------
 // 第一階段：素材選擇 (Media Picker) - 改為淺色模式

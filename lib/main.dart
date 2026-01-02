@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/auth_provider.dart'; // [新增]
-import 'screens/main_screen.dart';
+import 'screens/main/main_screen.dart';
 // import 'screens/login_screen.dart'; // [移除] 這裡不需要了
 
 void main() {

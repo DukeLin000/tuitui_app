@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/cart_provider.dart';
-import '../widgets/waterfall_feed.dart';
-import '../models/waterfall_item.dart'; 
-import '../widgets/responsive_container.dart';
-import '../models/cart_item.dart'; // [新增] 為了使用 ItemType
+import '../../providers/cart_provider.dart';
+import '../../widgets/waterfall_feed.dart';
+import '../../models/waterfall_item.dart'; 
+import '../../widgets/responsive_container.dart';
+import '../../models/cart_item.dart'; // [新增] 為了使用 ItemType
 
 class MarketScreen extends StatefulWidget {
   final VoidCallback onOpenCart;
