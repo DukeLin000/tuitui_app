@@ -1,6 +1,7 @@
+// lib/screens/chat/chat_tab_screen.dart
 import 'package:flutter/material.dart';
 import 'chat_room_screen.dart';
-import '../../widgets/responsive_container.dart'; // [新增] 引入 RWD 容器
+import '../../widgets/responsive_container.dart'; 
 
 class ChatTabScreen extends StatefulWidget {
   const ChatTabScreen({super.key});
@@ -10,9 +11,9 @@ class ChatTabScreen extends StatefulWidget {
 }
 
 class _ChatTabScreenState extends State<ChatTabScreen> {
-  String? _activeChatId; // 記錄目前是否在聊天室中
+  // [刪除] _activeChatId 變數，改用 Navigator 跳轉
 
-  // [優化] 豐富一點的假資料
+  // 假資料
   final List<Map<String, dynamic>> _mockChats = [
     {
       'id': '1',
@@ -50,42 +51,24 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 如果有選中的聊天對象，顯示聊天室
-    if (_activeChatId != null) {
-      // [RWD 優化] 使用 ResponsiveContainer 包裹聊天室
-      return Container(
-        color: Colors.grey[50], // 兩側背景色
-        child: ResponsiveContainer(
-          child: ChatRoomScreen(
-            chatId: _activeChatId!,
-            onBack: () => setState(() => _activeChatId = null),
-          ),
-        ),
-      );
-    }
-
-    // 否則顯示訊息列表
     return Scaffold(
-      backgroundColor: Colors.grey[50], // 1. 背景改為淺灰，與 Home 一致
+      backgroundColor: Colors.grey[50],
       
       appBar: AppBar(
-        // [RWD 優化] 標題使用 ResponsiveContainer
         title: const ResponsiveContainer(
           child: Text("訊息", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         ),
-        backgroundColor: Colors.grey[50], // AppBar 背景同色
+        backgroundColor: Colors.grey[50], 
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        centerTitle: true, // 標題置中
+        centerTitle: true,
       ),
       
-      // 2. [關鍵修改] 使用 ResponsiveContainer 取代原本的 Center + ConstrainedBox
       body: ResponsiveContainer(
         child: Container(
-          color: Colors.white, // 中間列表區域為白色，模擬手機視窗
+          color: Colors.white,
           child: ListView.separated(
             itemCount: _mockChats.length,
-            // 分隔線，略過頭像位置
             separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFEEEEEE), indent: 72),
             itemBuilder: (context, index) {
               final chat = _mockChats[index];
@@ -99,7 +82,6 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                       backgroundImage: NetworkImage(chat['avatar']),
                       backgroundColor: Colors.grey[200],
                     ),
-                    // 未讀紅點 (右上角)
                     if (chat['unread'] > 0)
                       Positioned(
                         right: 0,
@@ -156,7 +138,18 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                     ],
                   ],
                 ),
-                onTap: () => setState(() => _activeChatId = chat['id']),
+                // [修改] 點擊後跳轉到聊天室頁面
+                onTap: () {
+                  Navigator.push(
+                    context, 
+                    MaterialPageRoute(
+                      builder: (context) => ChatRoomScreen(
+                        userName: chat['name'], // 傳入名稱
+                        chatId: chat['id'],     // 傳入 ID
+                      )
+                    )
+                  );
+                },
               );
             },
           ),
