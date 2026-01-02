@@ -1,5 +1,5 @@
 // lib/models/waterfall_item.dart
-import 'cart_item.dart'; // [新增] 引入 CartItem 以使用 ItemType
+import 'cart_item.dart'; 
 
 class WaterfallItem {
   final String id;
@@ -9,10 +9,11 @@ class WaterfallItem {
   final String authorAvatar;
   final int likes;
   final double aspectRatio;
-  final int? price; // [已存在] 價格欄位
-  
-  // [新增] 類型欄位：用來判斷是商品還是預約
+  final int? price; 
   final ItemType type;
+  
+  // [新增] 關鍵欄位：判斷是否為商家帳號
+  final bool isMerchant;
 
   const WaterfallItem({
     required this.id,
@@ -23,7 +24,9 @@ class WaterfallItem {
     required this.likes,
     required this.aspectRatio,
     this.price,
-    // [新增] 預設是一般商品
-    this.type = ItemType.product, 
+    this.type = ItemType.product,
+    
+    // [新增] 預設為 false (一般用戶)，這樣舊資料不會報錯
+    this.isMerchant = false, 
   });
 }

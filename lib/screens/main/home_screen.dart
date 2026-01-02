@@ -1,16 +1,16 @@
+// lib/screens/main/home_screen.dart
 import 'package:flutter/material.dart';
 import '../../models/post.dart';
 import '../../widgets/post_card.dart';
 import '../../models/waterfall_item.dart';
 import '../../widgets/waterfall_feed.dart';
 import '../../widgets/responsive_container.dart';
-// [注意] 請確保您已經依照上一步驟建立了 search_screen.dart，若尚未建立請先建立該檔案
-import '../../screens/shop/search_screen.dart';
+// 引入搜尋頁面
+import '../shop/search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final Function(Map<String, dynamic>)? onUserTap;
-
-  const HomeScreen({super.key, this.onUserTap});
+  // [修改] 移除 onUserTap，因為現在點擊邏輯已經下放到各個組件內部
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -19,8 +19,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // 1. 追蹤頁資料 (Following) - 使用您原本的 Post 資料
-  // 這邊模擬關注的人發的貼文列表
+  // 1. 追蹤頁資料 (Following) - 使用 Post 模型
+  // 注意：這裡的 isMerchant 設定會影響 PostCard 點擊頭像後的去處
   static const List<Post> _followingPosts = [
     Post(
       id: '1',
@@ -31,7 +31,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       image: 'https://images.unsplash.com/photo-1617422725360-45b7671f980b?w=800',
       likes: 342,
       comments: 28,
-      timestamp: '2小時前'
+      timestamp: '2小時前',
+      isMerchant: false, // 個人 -> 去 ProfileScreen
     ),
     Post(
       id: '2',
@@ -42,24 +43,97 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       image: 'https://images.unsplash.com/photo-1532453288672-3a27e9be9efd?w=800',
       likes: 856,
       comments: 124,
-      timestamp: '5小時前'
+      timestamp: '5小時前',
+      isMerchant: false, // 個人
+    ),
+    // 可以加一個商家的例子
+    Post(
+      id: '3',
+      authorName: 'Nail Studio',
+      authorAvatar: 'https://images.unsplash.com/photo-1596462502278-27bfdd403348?w=100',
+      verified: true,
+      content: '本週新款指甲彩繪，預約請私訊！💅',
+      image: 'https://images.unsplash.com/photo-1632515949706-e74736173042?w=800',
+      likes: 120,
+      comments: 5,
+      timestamp: '1天前',
+      isMerchant: true, // 商家 -> 去 StoreProfileScreen
+    ),
+    // [新增] 個人測試帳號 (在追蹤列表)
+    Post(
+      id: 'test_user_1',
+      authorName: '測試人員小明', 
+      authorAvatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100', 
+      verified: false, 
+      content: '這是一則個人帳號的測試貼文，點擊我的頭像應該會跳轉到 ProfileScreen (看別人模式)！🚀', 
+      image: 'https://images.unsplash.com/photo-1516762689617-e1cffcef479d?w=800', 
+      likes: 10, 
+      comments: 2, 
+      timestamp: '剛剛',
+      isMerchant: false, // [關鍵] 設定為 false，代表是個人
     ),
   ];
 
-  // 2. 發現頁資料 (Discovery) - 使用 WaterfallItem
-  // 這是給「探索」分頁用的瀑布流
+  // 2. 發現頁資料 (Discovery) - 使用 WaterfallItem 模型
   static const List<WaterfallItem> _discoveryItems = [
-    WaterfallItem(id: '3', image: 'https://images.unsplash.com/photo-1737214475335-8ed64d91f473?w=600', title: '2024 最新法式指甲設計', authorName: 'Nail Studio', authorAvatar: 'https://images.unsplash.com/photo-1589553009868-c7b2bb474531?w=100', likes: 1234, aspectRatio: 1.3),
-    WaterfallItem(id: '4', image: 'https://images.unsplash.com/photo-1544580353-4a24b9074137?w=600', title: '韓系穿搭分享', authorName: 'Amy', authorAvatar: 'https://images.unsplash.com/photo-1589553009868-c7b2bb474531?w=100', likes: 2341, aspectRatio: 1.5),
-    WaterfallItem(id: '5', image: 'https://images.unsplash.com/photo-1634850034923-31cda5d080f5?w=600', title: '中山站咖啡廳推薦', authorName: 'Cafe Lover', authorAvatar: 'https://images.unsplash.com/photo-1589553009868-c7b2bb474531?w=100', likes: 892, aspectRatio: 1.2),
-    // 增加一點假資料讓版面看起來豐富些
-    WaterfallItem(id: '6', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600', title: '春季穿搭靈感', authorName: 'Style Icon', authorAvatar: '', likes: 520, aspectRatio: 1.4),
+    // [商家範例] 點擊頭像 -> StoreProfileScreen
+    WaterfallItem(
+      id: '3', 
+      image: 'https://images.unsplash.com/photo-1737214475335-8ed64d91f473?w=600', 
+      title: '2024 最新法式指甲設計', 
+      authorName: 'Nail Studio', 
+      authorAvatar: 'https://images.unsplash.com/photo-1589553009868-c7b2bb474531?w=100', 
+      likes: 1234, 
+      aspectRatio: 1.3,
+      isMerchant: true // 設定為商家
+    ),
+    // [個人範例] 點擊頭像 -> ProfileScreen
+    WaterfallItem(
+      id: '4', 
+      image: 'https://images.unsplash.com/photo-1544580353-4a24b9074137?w=600', 
+      title: '韓系穿搭分享', 
+      authorName: 'Amy', 
+      authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100', 
+      likes: 2341, 
+      aspectRatio: 1.5,
+      isMerchant: false // 設定為個人
+    ),
+    WaterfallItem(
+      id: '5', 
+      image: 'https://images.unsplash.com/photo-1634850034923-31cda5d080f5?w=600', 
+      title: '中山站咖啡廳推薦', 
+      authorName: 'Cafe Lover', 
+      authorAvatar: 'https://images.unsplash.com/photo-1589553009868-c7b2bb474531?w=100', 
+      likes: 892, 
+      aspectRatio: 1.2,
+      isMerchant: false
+    ),
+    WaterfallItem(
+      id: '6', 
+      image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600', 
+      title: '春季穿搭靈感', 
+      authorName: 'Style Icon', 
+      authorAvatar: '', 
+      likes: 520, 
+      aspectRatio: 1.4,
+      isMerchant: false
+    ),
+    // [新增] 個人測試帳號 (在瀑布流)
+    WaterfallItem(
+      id: 'test_user_2', 
+      image: 'https://images.unsplash.com/photo-1503342217505-b0815a046baf?w=600', 
+      title: '週末去哪玩？', 
+      authorName: '愛旅遊的 Cathy', 
+      authorAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100', 
+      likes: 88, 
+      aspectRatio: 1.2,
+      isMerchant: false // [關鍵] 設定為 false，點擊頭像會去 ProfileScreen
+    ),
   ];
 
   @override
   void initState() {
     super.initState();
-    // 初始化 TabController，長度 2 代表有兩個分頁
     _tabController = TabController(length: 2, vsync: this);
   }
 
@@ -69,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  // 跳轉到搜尋頁 (點擊頂部搜尋框時觸發)
+  // 跳轉到搜尋頁
   void _onSearchTap() {
     Navigator.push(
       context,
@@ -80,23 +154,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // 改為白色背景比較清爽
+      backgroundColor: Colors.white,
       
-      // 使用 NestedScrollView 讓搜尋框可以跟著滑動隱藏 (社群 App 標準體驗)
+      // 使用 NestedScrollView 讓搜尋框可以跟著滑動隱藏
       body: ResponsiveContainer(
         child: NestedScrollView(
-          floatHeaderSlivers: true, // 往下滑隱藏 AppBar，往上滑顯示
+          floatHeaderSlivers: true,
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
               SliverAppBar(
                 backgroundColor: Colors.white,
                 elevation: 0,
-                pinned: true, // TabBar 是否固定在頂部
-                floating: true, // AppBar 是否隨手勢浮動
+                pinned: true,
+                floating: true,
                 snap: true,
-                titleSpacing: 16, // 調整左右間距
+                titleSpacing: 16,
                 
-                // 1. 頂部搜尋框 (偽裝成輸入框的按鈕)
+                // 1. 頂部搜尋框
                 title: GestureDetector(
                   onTap: _onSearchTap,
                   child: Container(
@@ -119,25 +193,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ),
                 
-                // 2. 分頁標籤 (發現 / 追蹤)
+                // 2. 分頁標籤
                 bottom: TabBar(
                   controller: _tabController,
-                  labelColor: Colors.purple, // 選中顏色
-                  unselectedLabelColor: Colors.grey, // 未選中顏色
+                  labelColor: Colors.purple,
+                  unselectedLabelColor: Colors.grey,
                   labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   indicatorColor: Colors.purple,
                   indicatorSize: TabBarIndicatorSize.label,
                   indicatorWeight: 3,
                   tabs: const [
-                    Tab(text: "發現"), // 對應 WaterfallFeed
-                    Tab(text: "追蹤"), // 對應 PostCard 列表
+                    Tab(text: "發現"),
+                    Tab(text: "追蹤"),
                   ],
                 ),
               ),
             ];
           },
           
-          // 3. 內容區域 (對應 Tab)
+          // 3. 內容區域
           body: TabBarView(
             controller: _tabController,
             children: [
@@ -155,18 +229,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   final post = _followingPosts[index];
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                    child: GestureDetector(
-                      onTap: () {
-                        if (widget.onUserTap != null) {
-                          widget.onUserTap!({
-                            'name': post.authorName,
-                            'avatar': post.authorAvatar,
-                            'verified': post.verified
-                          });
-                        }
-                      },
-                      child: PostCard(post: post),
-                    ),
+                    // [修改] 這裡不需要再包 GestureDetector 去觸發 onUserTap
+                    // 因為 PostCard 內部應該要處理好點擊邏輯 (如果還沒處理，這一步可以先拿掉 onTap，
+                    // 或是確保 PostCard 內部有根據 isMerchant 跳轉)
+                    child: PostCard(post: post),
                   );
                 },
               ),

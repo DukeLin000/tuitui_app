@@ -9,6 +9,9 @@ class Post {
   final int likes;
   final int comments;
   final String timestamp;
+  
+  // [新增] 判斷是否為商家
+  final bool isMerchant; 
 
   const Post({
     required this.id,
@@ -20,7 +23,8 @@ class Post {
     required this.likes,
     required this.comments,
     required this.timestamp,
+    
+    // [新增] 預設為 false
+    this.isMerchant = false, 
   });
 }
-
-// [已刪除] WaterfallItem 類別移至 waterfall_item.dart
