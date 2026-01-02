@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../models/cart_item.dart';
+// [新增] 引入結帳頁面 (請確認您的檔案路徑是否正確)
+import '../screens/shop/checkout_screen.dart';
 
 class CartOverlay extends StatefulWidget {
   final VoidCallback onClose;
@@ -26,7 +28,7 @@ class _CartOverlayState extends State<CartOverlay> {
           child: Align(
             alignment: Alignment.bottomCenter,
             child: Material(
-              color: Colors.grey[100], // 整體背景改為淺灰
+              color: Colors.grey[100], 
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               clipBehavior: Clip.antiAlias,
               child: SizedBox(
@@ -101,7 +103,7 @@ class _CartOverlayState extends State<CartOverlay> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // [修改] 勾選框：連動單一商品狀態
+          // 勾選框：連動單一商品狀態
           Checkbox(
             value: item.isSelected, 
             activeColor: Colors.purple,
@@ -119,6 +121,10 @@ class _CartOverlayState extends State<CartOverlay> {
               width: 80,
               height: 80,
               fit: BoxFit.cover,
+              // 加入錯誤處理，避免圖片掛掉時報錯
+              errorBuilder: (context, error, stackTrace) => Container(
+                width: 80, height: 80, color: Colors.grey[200], child: const Icon(Icons.image_not_supported, color: Colors.grey),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -135,7 +141,7 @@ class _CartOverlayState extends State<CartOverlay> {
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
                 
-                // 預約標籤 (方案 B)
+                // 預約標籤
                 if (item.type == ItemType.reservation && item.bookingDate != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -167,7 +173,7 @@ class _CartOverlayState extends State<CartOverlay> {
                       ),
                     ),
                     
-                    // 蝦皮式數量選擇器
+                    // 數量選擇器
                     Container(
                       height: 30,
                       decoration: BoxDecoration(
@@ -210,7 +216,7 @@ class _CartOverlayState extends State<CartOverlay> {
     );
   }
 
-  // [修改] 底部固定的蝦皮結帳導覽列：連動全選與合計
+  // 底部導覽列
   Widget _buildBottomBar(CartProvider cart) {
     // 獲取目前被選取的商品數量
     final selectedCount = cart.items.where((item) => item.isSelected).length;
@@ -230,7 +236,7 @@ class _CartOverlayState extends State<CartOverlay> {
       ),
       child: Row(
         children: [
-          // [修改] 全選勾選框：連動 Provider 的 isAllSelected
+          // 全選勾選框
           Row(
             children: [
               Checkbox(
@@ -269,13 +275,17 @@ class _CartOverlayState extends State<CartOverlay> {
           ),
           const SizedBox(width: 12),
           
-          // 結帳按鈕 (顯示被勾選的數量)
+          // 結帳按鈕 (連結到 CheckoutScreen)
           SizedBox(
             height: 44,
             width: 110,
             child: FilledButton(
               onPressed: selectedCount == 0 ? null : () {
-                // 這裡執行買單邏輯
+                // [修正] 跳轉到結帳頁面
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+                );
               },
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.purple,

@@ -1,4 +1,4 @@
-// lib/screens/profile_screen.dart
+// lib/screens/profile/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; 
 import '../../providers/auth_provider.dart'; 
@@ -6,12 +6,9 @@ import '../../models/waterfall_item.dart';
 import '../../widgets/waterfall_feed.dart';
 import '../../widgets/responsive_container.dart';
 import 'edit_profile_screen.dart';
-
-// [修改重點] 引入外部獨立的商家儀表板檔案
 import '../merchant/merchant_dashboard_screen.dart'; 
-
-// [注意] 這裡原本的 class MerchantDashboardScreen 已刪除，
-// 改為使用 import 進來的版本，讓檔案更乾淨。
+// [新增] 引入買家訂單頁面
+import '../shop/buyer_order_list_screen.dart'; 
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onSettingsTap;
@@ -51,7 +48,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _name = result['name'];
         _bio = result['bio'];
-        // _avatar = result['avatar']; 
       });
     }
   }
@@ -60,8 +56,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _navigateToMerchantCenter() {
     Navigator.push(
       context, 
-      // 這裡會自動使用 import 進來的 MerchantDashboardScreen
       MaterialPageRoute(builder: (context) => const MerchantDashboardScreen())
+    );
+  }
+
+  // [新增] 跳轉到我的訂單
+  void _navigateToMyOrders() {
+    Navigator.push(
+      context, 
+      MaterialPageRoute(builder: (context) => const BuyerOrderListScreen())
     );
   }
 
@@ -119,7 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // 名字區域：如果是商家，顯示標記
+                  // 名字區域
                   Row(
                     children: [
                       Text(_name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -141,9 +144,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 8),
                   Text(_bio, style: const TextStyle(color: Colors.grey, fontSize: 14)),
                   
-                  // 商家中心入口卡片 (僅在 isMerchant 為 true 時顯示)
+                  const SizedBox(height: 24),
+
+                  // --- 功能入口區 ---
+
+                  // [新增] 我的訂單入口 (所有人可見)
+                  GestureDetector(
+                    onTap: _navigateToMyOrders,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: Colors.blue[50], shape: BoxShape.circle),
+                            child: const Icon(Icons.receipt_long_outlined, color: Colors.blue, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text("我的訂單", style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                          const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // 商家中心入口卡片 (僅商家可見)
                   if (isMerchant) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     GestureDetector(
                       onTap: _navigateToMerchantCenter,
                       child: Container(
@@ -198,7 +232,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: Colors.white,
               child: Column(
                 children: [
-                  // Tabs
                   Container(
                     decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey[200]!))),
                     child: Row(
@@ -211,7 +244,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   
-                  // 瀑布流作品集
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0), 
                     child: WaterfallFeed(items: _userWorks),
