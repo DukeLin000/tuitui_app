@@ -1,24 +1,26 @@
 // lib/widgets/waterfall_feed.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart'; // 確保 pubspec.yaml 已加入 intl 套件
+import 'package:intl/intl.dart'; 
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart'; // 確保您有安裝此套件
 import '../models/waterfall_item.dart';
 import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
+// [新增] 引入跳轉頁面
+import '../screens/shop/product_detail_screen.dart';
+import '../screens/shop/store_profile_screen.dart';
 
 class WaterfallFeed extends StatelessWidget {
   final List<WaterfallItem> items;
 
   const WaterfallFeed({super.key, required this.items});
 
-  // [修正] 預約選擇彈窗方法
+  // [保留] 預約選擇彈窗方法 (邏輯不變)
   void _showBookingPicker(BuildContext context, WaterfallItem item) {
-    // 1. 在彈窗外定義初始值
     DateTime localSelectedDate = DateTime.now().add(const Duration(days: 1));
     String localSelectedTime = "";
     int localPeopleCount = 2;
 
-    // 模擬已滿時段 (Key: yyyy-MM-dd)
     final Map<String, List<String>> fullSlotsData = {
       DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 1))): ["14:00", "15:00"],
     };
@@ -48,18 +50,12 @@ class WaterfallFeed extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(
-                          "預約 ${item.title}", 
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Text("預約 ${item.title}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                       ),
                       IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                     ],
                   ),
                   const Divider(),
-
-                  // 1. 日期選擇
                   const Text("選擇預約日期", style: TextStyle(fontWeight: FontWeight.bold)),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -76,13 +72,11 @@ class WaterfallFeed extends StatelessWidget {
                       if (picked != null) {
                         setModalState(() {
                           localSelectedDate = picked;
-                          localSelectedTime = ""; // 日期改變後需重選時段
+                          localSelectedTime = "";
                         });
                       }
                     },
                   ),
-
-                  // 2. 時段選擇 (ChoiceChips)
                   const SizedBox(height: 16),
                   const Text("選擇時段", style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
@@ -98,19 +92,15 @@ class WaterfallFeed extends StatelessWidget {
                           setModalState(() => localSelectedTime = time);
                         },
                         selectedColor: Colors.purple.withOpacity(0.2),
-                        labelStyle: TextStyle(
-                          color: isFull ? Colors.grey : (isSelected ? Colors.purple : Colors.black87),
-                        ),
+                        labelStyle: TextStyle(color: isFull ? Colors.grey : (isSelected ? Colors.purple : Colors.black87)),
                       );
                     }).toList(),
                   ),
-
-                  // 3. 人數選擇
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("預預人數", style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text("預約人數", style: TextStyle(fontWeight: FontWeight.bold)),
                       Row(
                         children: [
                           IconButton(
@@ -126,24 +116,24 @@ class WaterfallFeed extends StatelessWidget {
                       ),
                     ],
                   ),
-
-                  // 4. 確認按鈕
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: localSelectedTime.isEmpty ? null : () {
                         final bookingStr = "${DateFormat('yyyy-MM-dd').format(localSelectedDate)} $localSelectedTime";
-                        
-                        // [關鍵] 確保與 CartProvider 的 addToCart 參數一致
-                        Provider.of<CartProvider>(context, listen: false).addToCart(
-                          item.id,
-                          item.title,
-                          item.price ?? 0,
-                          item.image,
-                          type: ItemType.reservation,
-                          bookingDate: bookingStr,
-                          peopleCount: localPeopleCount,
+                        // [修改] 使用 addItem 配合新的 CartItem 結構
+                        Provider.of<CartProvider>(context, listen: false).addItem(
+                          CartItem(
+                            id: "${item.id}_${DateTime.now().millisecondsSinceEpoch}",
+                            name: item.title,
+                            price: item.price ?? 0,
+                            image: item.image,
+                            type: ItemType.reservation,
+                            bookingDate: bookingStr,
+                            peopleCount: localPeopleCount,
+                            isSelected: true,
+                          )
                         );
                         
                         Navigator.pop(context);
@@ -151,10 +141,7 @@ class WaterfallFeed extends StatelessWidget {
                           SnackBar(content: Text("已預約 $bookingStr ($localPeopleCount位) 已加入購物車")),
                         );
                       },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.purple,
-                        padding: const EdgeInsets.all(16),
-                      ),
+                      style: FilledButton.styleFrom(backgroundColor: Colors.purple, padding: const EdgeInsets.all(16)),
                       child: Text(localSelectedTime.isEmpty ? "請選擇時段" : "確認預約並加入購物車"),
                     ),
                   ),
@@ -169,90 +156,120 @@ class WaterfallFeed extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500),
-        child: GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 260,
-            childAspectRatio: 0.75,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-          ),
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final item = items[index];
-            final isProduct = item.price != null;
+    return MasonryGridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        final isProduct = item.price != null;
 
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[200]!),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2)),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                      child: Image.network(
-                        item.image,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          color: Colors.grey[200],
-                          child: const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
-                        ),
-                      ),
+        return GestureDetector(
+          // [新增] 點擊卡片跳轉到商品詳情
+          onTap: () {
+            Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (_) => ProductDetailScreen(
+                id: item.id,
+                title: item.title,
+                imageUrl: item.image,
+                price: item.price ?? 1280, // 若沒價格則用預設值
+              ))
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[200]!),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2)),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 圖片區
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                  child: Image.network(
+                    item.image,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 150, // 給個固定高度避免版面跑掉
+                      color: Colors.grey[200],
+                      child: const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, 
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        const SizedBox(height: 6),
-                        
-                        if (isProduct)
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('NT\$ ${item.price}', 
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red)),
-                              
-                              if (item.type == ItemType.reservation)
-                                IconButton(
-                                  icon: const Icon(Icons.calendar_month, size: 20, color: Colors.orange),
-                                  constraints: const BoxConstraints(),
-                                  padding: EdgeInsets.zero,
-                                  onPressed: () => _showBookingPicker(context, item),
-                                )
-                              else
-                                IconButton(
-                                  icon: const Icon(Icons.add_shopping_cart, size: 20, color: Colors.purple),
-                                  constraints: const BoxConstraints(),
-                                  padding: EdgeInsets.zero,
-                                  onPressed: () {
-                                    Provider.of<CartProvider>(context, listen: false).addToCart(
-                                      item.id, item.title, item.price!, item.image,
+                ),
+                
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 標題
+                      Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, 
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 6),
+                      
+                      // 價格與購物車按鈕 (僅商品顯示)
+                      if (isProduct)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('NT\$ ${item.price}', 
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red)),
+                            
+                            // 根據類型顯示不同按鈕
+                            if (item.type == ItemType.reservation)
+                              IconButton(
+                                icon: const Icon(Icons.calendar_month, size: 20, color: Colors.orange),
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                                onPressed: () => _showBookingPicker(context, item),
+                              )
+                            else
+                              IconButton(
+                                icon: const Icon(Icons.add_shopping_cart, size: 20, color: Colors.purple),
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                                onPressed: () {
+                                  // [修改] 使用 addItem
+                                  Provider.of<CartProvider>(context, listen: false).addItem(
+                                    CartItem(
+                                      id: "${item.id}_${DateTime.now().millisecondsSinceEpoch}",
+                                      name: item.title,
+                                      price: item.price!,
+                                      image: item.image,
                                       type: ItemType.product,
-                                    );
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("已加入購物車")));
-                                  },
+                                      isSelected: true,
+                                    )
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("已加入購物車")));
+                                },
+                              ),
+                          ],
+                        )
+                      else
+                        // 作者資訊 (非商品模式，或是底部資訊列)
+                        // [新增] 點擊作者跳轉到店鋪主頁
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StoreProfileScreen(
+                                  merchantName: item.authorName,
+                                  avatarUrl: item.authorAvatar,
                                 ),
-                            ],
-                          )
-                        else
-                          Row(
+                              ),
+                            );
+                          },
+                          child: Row(
                             children: [
                               CircleAvatar(
                                 radius: 8, 
@@ -269,16 +286,16 @@ class WaterfallFeed extends StatelessWidget {
                               const SizedBox(width: 2),
                               Text('${item.likes}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                             ],
-                          )
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            );
-          },
-        ),
-      ),
+                          ),
+                        )
+                    ],
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
