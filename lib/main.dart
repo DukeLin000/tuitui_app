@@ -1,16 +1,18 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/cart_provider.dart';
-import 'providers/auth_provider.dart'; // [新增]
+import 'providers/auth_provider.dart'; 
+import 'providers/post_provider.dart'; // [新增] 引入 PostProvider
 import 'screens/main/main_screen.dart';
-// import 'screens/login_screen.dart'; // [移除] 這裡不需要了
 
 void main() {
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CartProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()), // [新增] 註冊 AuthProvider
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => PostProvider()), // [新增] 註冊 PostProvider
       ],
       child: const TuituiApp(),
     ),
@@ -20,8 +22,6 @@ void main() {
 class TuituiApp extends StatelessWidget {
   const TuituiApp({super.key});
 
-  // [移除] _isLoggedIn 狀態變數，改由 Provider 管理
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -29,7 +29,6 @@ class TuituiApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       scrollBehavior: NoScrollbarBehavior(),
       theme: ThemeData(
-        // ... (保持原本的主題設定)
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF9FAFB),
@@ -45,7 +44,6 @@ class TuituiApp extends StatelessWidget {
           ),
         ),
       ),
-      // [關鍵修改] 無論是否登入，一律先進入主畫面
       home: const MainScreen(),
     );
   }

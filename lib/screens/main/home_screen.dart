@@ -230,8 +230,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                     // [修改] 這裡不需要再包 GestureDetector 去觸發 onUserTap
-                    // 因為 PostCard 內部應該要處理好點擊邏輯 (如果還沒處理，這一步可以先拿掉 onTap，
-                    // 或是確保 PostCard 內部有根據 isMerchant 跳轉)
+                    // 因為 PostCard 內部應該要處理好點擊邏輯
                     child: PostCard(post: post),
                   );
                 },
