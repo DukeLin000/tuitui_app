@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import '../../widgets/responsive_container.dart';
 import '../../models/waterfall_item.dart';
 import '../../widgets/waterfall_feed.dart';
-// 確保能跳轉到商品詳情
 import 'product_detail_screen.dart'; 
 
 class StoreProfileScreen extends StatefulWidget {
-  // 實際串接時傳入 ID
   final String merchantName;
   final String avatarUrl;
 
@@ -21,7 +19,8 @@ class StoreProfileScreen extends StatefulWidget {
   State<StoreProfileScreen> createState() => _StoreProfileScreenState();
 }
 
-class _StoreProfileScreenState extends State<StoreProfileScreen> {
+class _StoreProfileScreenState extends State<StoreProfileScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   bool _isFollowing = false;
 
   // 模擬商家櫥窗數據
@@ -32,110 +31,148 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        // 顯示商家名稱
-        title: Text(widget.merchantName, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(onPressed: (){}, icon: const Icon(Icons.share_outlined)),
-          IconButton(onPressed: (){}, icon: const Icon(Icons.more_horiz)),
-        ],
-      ),
       body: ResponsiveContainer(
-        // 使用 NestedScrollView 讓頭部資訊可以滑動收起，下方列表吸頂
         child: NestedScrollView(
+          // headerSliverBuilder 建構頂部可滑動區域
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      // 1. 商家資訊區
-                      Row(
-                        children: [
-                          CircleAvatar(radius: 36, backgroundImage: NetworkImage(widget.avatarUrl)),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _statItem("128", "商品"),
-                                _statItem("1.2k", "粉絲"),
-                                _statItem("4.9", "評價"),
-                              ],
-                            ),
-                          )
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // 2. 商家簡介
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "我們專注於韓系簡約風格，每週二上新 ✨\n實體店面：台北市中山區...\n#韓系 #穿搭 #小資女", 
-                          style: TextStyle(height: 1.4, color: Colors.black87)
+              SliverAppBar(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                pinned: true, // App Bar 固定在頂部
+                expandedHeight: 400, // 展開時的高度 (包含頭像、簡介等)
+                leading: const BackButton(color: Colors.black),
+                actions: [
+                  IconButton(onPressed: (){}, icon: const Icon(Icons.share_outlined, color: Colors.black)),
+                  IconButton(onPressed: (){}, icon: const Icon(Icons.more_horiz, color: Colors.black)),
+                ],
+                // 標題 (當縮到最小時顯示商家名稱)
+                flexibleSpace: FlexibleSpaceBar(
+                  centerTitle: true,
+                  title: Text(
+                    innerBoxIsScrolled ? widget.merchantName : "", // 只有往下滑動後才顯示標題
+                    style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  background: Padding(
+                    padding: const EdgeInsets.only(top: 80, left: 20, right: 20, bottom: 60), // 留空間給 TabBar
+                    child: Column(
+                      children: [
+                        // 1. 商家資訊區
+                        Row(
+                          children: [
+                            CircleAvatar(radius: 36, backgroundImage: NetworkImage(widget.avatarUrl)),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: [
+                                  _statItem("128", "商品"),
+                                  _statItem("1.2k", "粉絲"),
+                                  _statItem("4.9", "評價"),
+                                ],
+                              ),
+                            )
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // 3. 操作按鈕 (追蹤、聊聊)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: () => setState(() => _isFollowing = !_isFollowing),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: _isFollowing ? Colors.grey[200] : Colors.purple,
-                                foregroundColor: _isFollowing ? Colors.black : Colors.white,
-                                elevation: 0,
+                        const SizedBox(height: 16),
+                        
+                        // 2. 商家簡介
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "我們專注於韓系簡約風格，每週二上新 ✨\n實體店面：台北市中山區...\n#韓系 #穿搭 #小資女", 
+                            style: TextStyle(height: 1.4, color: Colors.black87),
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // 3. 操作按鈕 (追蹤、聊聊)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: () => setState(() => _isFollowing = !_isFollowing),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _isFollowing ? Colors.grey[200] : Colors.purple,
+                                  foregroundColor: _isFollowing ? Colors.black : Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                ),
+                                child: Text(_isFollowing ? "已追蹤" : "追蹤店家"),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            OutlinedButton(
+                              onPressed: () {
+                                  // 這裡可以跳轉到聊天室
+                              }, 
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                side: BorderSide(color: Colors.grey[300]!),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                               ),
-                              child: Text(_isFollowing ? "已追蹤" : "追蹤店家"),
+                              child: const Icon(Icons.chat_bubble_outline, size: 20, color: Colors.black),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          OutlinedButton(
-                            onPressed: () {
-                                // 這裡可以跳轉到聊天室
-                            }, 
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              side: BorderSide(color: Colors.grey[300]!),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            ),
-                            child: const Icon(Icons.chat_bubble_outline, size: 20, color: Colors.black),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // 底部 TabBar (會吸頂)
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(48),
+                  child: Container(
+                    color: Colors.white, // 確保吸頂時背景不透明
+                    child: TabBar(
+                      controller: _tabController,
+                      labelColor: Colors.purple,
+                      unselectedLabelColor: Colors.grey,
+                      indicatorColor: Colors.purple,
+                      indicatorSize: TabBarIndicatorSize.label,
+                      indicatorWeight: 3,
+                      tabs: const [
+                        Tab(text: "熱銷櫥窗"), 
+                        Tab(text: "最新上架")
+                      ],
+                    ),
                   ),
                 ),
               ),
             ];
           },
-          // 4. 下方商品與貼文列表
-          body: Column(
+          // 4. 下方商品列表
+          body: TabBarView(
+            controller: _tabController,
             children: [
-              const TabBar(
-                tabs: [Tab(text: "熱銷櫥窗"), Tab(text: "最新上架")],
-                labelColor: Colors.black,
-                indicatorColor: Colors.purple,
-                indicatorSize: TabBarIndicatorSize.label,
+              // Tab 1: 熱銷
+              Container(
+                color: Colors.grey[50],
+                padding: const EdgeInsets.only(top: 8),
+                child: WaterfallFeed(items: _storeProducts), 
               ),
-              Expanded(
-                child: Container(
-                  color: Colors.grey[50],
-                  padding: const EdgeInsets.only(top: 8),
-                  // 這裡複用 WaterfallFeed 顯示商品
-                  child: WaterfallFeed(items: _storeProducts), 
-                ),
+              // Tab 2: 最新 (這裡暫時用同一份資料)
+              Container(
+                color: Colors.grey[50],
+                padding: const EdgeInsets.only(top: 8),
+                child: WaterfallFeed(items: _storeProducts.reversed.toList()), 
               ),
             ],
           ),
