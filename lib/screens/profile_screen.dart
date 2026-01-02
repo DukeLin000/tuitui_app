@@ -1,9 +1,17 @@
 // lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
-import '../models/waterfall_item.dart'; // [新增] 必須引入這個 Model
+import 'package:provider/provider.dart'; 
+import '../providers/auth_provider.dart'; 
+import '../models/waterfall_item.dart';
 import '../widgets/waterfall_feed.dart';
-import '../widgets/responsive_container.dart'; // [新增] 引入 RWD 容器
+import '../widgets/responsive_container.dart';
 import 'edit_profile_screen.dart';
+
+// [修改重點] 引入外部獨立的商家儀表板檔案
+import 'merchant/merchant_dashboard_screen.dart'; 
+
+// [注意] 這裡原本的 class MerchantDashboardScreen 已刪除，
+// 改為使用 import 進來的版本，讓檔案更乾淨。
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onSettingsTap;
@@ -18,7 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // 用戶資料狀態
   String _name = "推推用戶";
   String _bio = "歡迎來到我的試衣間 ✨ 分享日常穿搭與美好生活";
-  String _avatar = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100";
+  final String _avatar = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100";
 
   // 假資料：我的作品
   static const List<WaterfallItem> _userWorks = [
@@ -48,10 +56,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // 跳轉到商家中心
+  void _navigateToMerchantCenter() {
+    Navigator.push(
+      context, 
+      // 這裡會自動使用 import 進來的 MerchantDashboardScreen
+      MaterialPageRoute(builder: (context) => const MerchantDashboardScreen())
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 監聽商家狀態
+    final isMerchant = context.watch<AuthProvider>().isMerchant;
+
     return Scaffold(
-      // [視覺一致性] 背景改為淺灰，與 Home/Market 一致
       backgroundColor: Colors.grey[50], 
       
       appBar: AppBar(
@@ -59,7 +78,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        // [RWD] 標題置中限制寬度 (使用 ResponsiveContainer)
         title: const ResponsiveContainer(
           child: Text("Me", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         ),
@@ -74,10 +92,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.only(bottom: 20),
         children: [
           // 1. 用戶資料區塊 (Profile Info)
-          // [修改] 使用 ResponsiveContainer
           ResponsiveContainer(
             child: Container(
-              color: Colors.white, // 卡片白色背景
+              color: Colors.white,
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 10),
               child: Column(
@@ -101,10 +118,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Text(_name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  
+                  // 名字區域：如果是商家，顯示標記
+                  Row(
+                    children: [
+                      Text(_name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      if (isMerchant) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.purple.withOpacity(0.3))
+                          ),
+                          child: const Text("Merchant", style: TextStyle(fontSize: 10, color: Colors.purple, fontWeight: FontWeight.bold)),
+                        )
+                      ]
+                    ],
+                  ),
+
                   const SizedBox(height: 8),
                   Text(_bio, style: const TextStyle(color: Colors.grey, fontSize: 14)),
                   
+                  // 商家中心入口卡片 (僅在 isMerchant 為 true 時顯示)
+                  if (isMerchant) ...[
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: _navigateToMerchantCenter,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(color: Colors.purple[50], shape: BoxShape.circle),
+                              child: const Icon(Icons.storefront, color: Colors.purple, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text("商家中心", style: TextStyle(fontWeight: FontWeight.bold)),
+                                  Text("管理商品、預約與營收數據", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 20),
                   
                   // Edit Profile 按鈕
@@ -121,7 +193,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           
           // 2. 底部作品區 (Works Tab & Feed)
-          // [修改] 使用 ResponsiveContainer
           ResponsiveContainer(
             child: Container(
               color: Colors.white,
@@ -155,7 +226,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// --- 私有輔助組件 (保持不變) ---
+// --- 私有輔助組件 ---
 class _ProfileStatItem extends StatelessWidget {
   final String count;
   final String label;

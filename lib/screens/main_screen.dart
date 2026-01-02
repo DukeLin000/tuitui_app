@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+﻿// lib/screens/main_screen.dart
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
-import '../providers/auth_provider.dart'; // [新增] 引入 AuthProvider
+import '../providers/auth_provider.dart'; // 引入 AuthProvider
 import '../widgets/map_view_overlay.dart';
 import '../widgets/user_profile_modal.dart';
 import '../widgets/cart_overlay.dart';
@@ -12,25 +13,82 @@ import 'market_screen.dart';
 import 'create_post_screen.dart';
 import 'profile_screen.dart';
 import 'chat_tab_screen.dart';
-import 'login_screen.dart'; // [新增] 引入登入頁面
+import 'login_screen.dart'; // 引入登入頁面
 
-// 設定頁面
+// ---------------------------------------------------------------------------
+// 設定頁面 (修改：加入商家模式切換)
+// ---------------------------------------------------------------------------
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Settings", style: TextStyle(color: Colors.black)),
+        title: const Text("設置", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: const Center(child: Text("Settings Page")),
+      // 使用 Consumer 監聽 AuthProvider 狀態
+      body: Consumer<AuthProvider>(
+        builder: (context, auth, child) {
+          return ListView(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text("帳號", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: const Text("個人資料"),
+                trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                onTap: () {},
+              ),
+              const Divider(height: 1),
+              
+              // [核心功能] 商家模式切換開關
+              SwitchListTile(
+                secondary: const Icon(Icons.storefront, color: Colors.purple),
+                title: const Text("商家模式"),
+                subtitle: Text(
+                  auth.isMerchant ? "已啟用商家功能" : "切換以管理商品與預約",
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+                value: auth.isMerchant,
+                activeColor: Colors.purple,
+                onChanged: (bool value) {
+                  auth.toggleMerchantMode(); // 切換狀態
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(value ? "歡迎使用商家中心！請至個人頁查看。" : "已切換回個人模式"),
+                      duration: const Duration(seconds: 2),
+                    )
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text("登出", style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  auth.logout();
+                  Navigator.pop(context); // 登出後關閉設置頁
+                },
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
 
+// ---------------------------------------------------------------------------
+// 主畫面 (保持原有功能)
+// ---------------------------------------------------------------------------
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -46,7 +104,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _showCart = false;
   Map<String, dynamic>? _selectedUser;
 
-  // [新增] 處理 Tab 點擊的攔截邏輯 (需要登入才能看的頁面)
+  // 處理 Tab 點擊的攔截邏輯 (需要登入才能看的頁面)
   void _onTabTapped(int index) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
 
@@ -98,6 +156,7 @@ class _MainScreenState extends State<MainScreen> {
         break;
       case 4: 
         bodyContent = ProfileScreen(
+          // 傳遞跳轉到設置頁面的回調
           onSettingsTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
         ); 
         break;
@@ -121,7 +180,7 @@ class _MainScreenState extends State<MainScreen> {
           
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _selectedIndex,
-            onTap: _onTabTapped, // [關鍵] 使用我們自定義的攔截方法
+            onTap: _onTabTapped, // 使用自定義的攔截方法
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.white,
             selectedItemColor: Colors.purple,
@@ -129,7 +188,7 @@ class _MainScreenState extends State<MainScreen> {
             items: [
               const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: '推推'),
               
-              // [修正] 這裡修正了 Consumer 的完整寫法，加上紅點邏輯
+              // 市集 (帶有購物車紅點)
               BottomNavigationBarItem(
                 icon: Consumer<CartProvider>(
                   builder: (context, cart, child) {
