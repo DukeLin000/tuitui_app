@@ -2,13 +2,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/post_provider.dart'; // [新增] 引入 PostProvider
 import '../../models/waterfall_item.dart';
 import '../../widgets/waterfall_feed.dart';
 import '../../widgets/responsive_container.dart';
 import 'edit_profile_screen.dart';
 import '../merchant/merchant_dashboard_screen.dart';
 import '../shop/buyer_order_list_screen.dart';
-// [新增] 引入聊天室
 import '../chat/chat_room_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -33,15 +33,10 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   // 這些之後應該從 API 獲取
-  // [修改] 移除 late，改為在 build 中動態獲取或使用傳入值
   String _bio = "歡迎來到我的試衣間 ✨ 分享日常穿搭與美好生活";
   bool _isFollowing = false; // 追蹤狀態 (僅看別人時使用)
 
-  // 假資料：作品集
-  static const List<WaterfallItem> _userWorks = [
-    WaterfallItem(id: '1', image: 'https://images.unsplash.com/photo-1737214475335-8ed64d91f473?w=600', title: '我的作品集', authorName: 'Me', authorAvatar: '', likes: 1234, aspectRatio: 1.3),
-    WaterfallItem(id: '2', image: 'https://images.unsplash.com/photo-1544580353-4a24b9074137?w=600', title: '日常隨拍', authorName: 'Me', authorAvatar: '', likes: 2341, aspectRatio: 1.5),
-  ];
+  // [移除] static const List<WaterfallItem> _userWorks ... (改用 Provider)
 
   // 編輯頁面跳轉
   void _navigateToEditProfile(String currentName, String currentAvatar) async {
@@ -58,8 +53,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
-        // 這裡實際應該是呼叫 AuthProvider 更新 user 資料
-        // _name = result['name']; 
         _bio = result['bio'];
       });
     }
@@ -83,20 +76,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 判斷是否為「看自己」：如果沒有傳 userId，或者傳入的 ID 等於登入者 ID
-    // 這裡簡化判斷：只要 widget.userId 為 null，就當作是從 Tab 進來的「看自己」
+    // 判斷是否為「看自己」
     final bool isMe = widget.userId == null;
 
-    // [核心修正] 資料來源邏輯
-    // 如果是看別人 (isMe == false)，顯示傳入的 userName/userAvatar
-    // 如果是看自己 (isMe == true)，顯示 AuthProvider 裡的 user 資料 (或是預設值)
-    // 這裡為了簡化，先寫死預設值，實際專案請從 AuthProvider 拿
     final String displayName = isMe ? "推推用戶" : (widget.userName ?? "未知用戶");
     final String displayAvatar = isMe 
         ? "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100" 
         : (widget.userAvatar ?? "https://via.placeholder.com/150");
 
-    // 監聽商家狀態 (只有看自己時，才需要判斷自己是不是商家)
+    // 監聽商家狀態
     final isMerchant = isMe && context.watch<AuthProvider>().isMerchant;
 
     return Scaffold(
@@ -107,7 +95,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        // 如果是看別人，顯示返回鍵；看自己則不需要
         leading: isMe ? null : const BackButton(color: Colors.black),
         title: ResponsiveContainer(
           child: Text(isMe ? "Me" : displayName, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
@@ -115,7 +102,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           IconButton(onPressed: () {}, icon: const Icon(Icons.qr_code, color: Colors.black)),
           IconButton(onPressed: () {}, icon: const Icon(Icons.share_outlined, color: Colors.black)),
-          // 只有看自己時，才顯示設定按鈕
           if (isMe)
             IconButton(onPressed: widget.onSettingsTap, icon: const Icon(Icons.settings_outlined, color: Colors.black))
           else
@@ -158,7 +144,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     children: [
                       Text(displayName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      // 只有看自己且是商家時，才顯示 Merchant 標籤 (或者看別人的商家頁面時也要顯示，這裡暫時只做看自己)
                       if (isMerchant) ...[
                         const SizedBox(width: 8),
                         Container(
@@ -177,35 +162,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text(_bio, style: const TextStyle(color: Colors.grey, fontSize: 14)),
                   const SizedBox(height: 20),
 
-                  // --- 按鈕區 (核心差異) ---
+                  // --- 按鈕區 ---
                   if (isMe) ...[
-                    // [看自己] 顯示功能入口
-
-                    // 我的訂單
+                    // [看自己]
                     _buildMenuRow(
                       icon: Icons.receipt_long_outlined,
                       color: Colors.blue,
                       title: "我的訂單",
-                      onTap: _navigateToMyOrders // 使用提取出的方法
+                      onTap: _navigateToMyOrders
                     ),
                     const SizedBox(height: 12),
 
-                    // 商家中心 (如果是商家)
                     if (isMerchant)
                       _buildMenuRow(
                         icon: Icons.storefront,
                         color: Colors.purple,
                         title: "商家中心",
                         subtitle: "管理商品與營收",
-                        onTap: _navigateToMerchantCenter // 使用提取出的方法
+                        onTap: _navigateToMerchantCenter
                       ),
 
                     const SizedBox(height: 20),
-                    // 編輯個人檔案按鈕
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
-                        onPressed: () => _navigateToEditProfile(displayName, displayAvatar), // 傳入當前資料
+                        onPressed: () => _navigateToEditProfile(displayName, displayAvatar),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.black, side: BorderSide(color: Colors.grey[300]!),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
@@ -215,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
 
                   ] else ...[
-                    // [看別人] 顯示互動按鈕 (追蹤 & 聊聊)
+                    // [看別人]
                     Row(
                       children: [
                         Expanded(
@@ -233,7 +214,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(width: 12),
                         OutlinedButton(
                           onPressed: () {
-                            // 跳轉到聊天室
                             Navigator.push(context, MaterialPageRoute(builder: (_) => ChatRoomScreen(userName: displayName)));
                           },
                           style: OutlinedButton.styleFrom(
@@ -269,9 +249,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: WaterfallFeed(items: _userWorks),
+                  
+                  // [核心修改] 使用 Consumer 獲取動態作品集
+                  Consumer<PostProvider>(
+                    builder: (context, postProvider, child) {
+                      // 過濾邏輯：
+                      // 如果是看自己 (isMe)，顯示作者是 '我 (Me)' 的貼文 (對應 CreatePostScreen 發布時的名稱)
+                      // 如果是看別人，顯示作者名稱符合的貼文
+                      final myPosts = postProvider.discoveryItems.where((item) {
+                        if (isMe) {
+                          // [注意] 這裡要跟 CreatePostScreen 裡的 authorName 對應
+                          // 為了相容性，這裡判斷 '我 (Me)' 或 'Me'
+                          return item.authorName == '我 (Me)' || item.authorName == 'Me';
+                        } else {
+                          // 比對 userName 或 userId (視您的資料而定)
+                          // 這裡的邏輯是：只要 authorName 跟傳進來的 userName 一樣就顯示
+                          return item.authorName == widget.userName || item.authorName == widget.userId;
+                        }
+                      }).toList();
+
+                      // 如果沒有內容，可以顯示空狀態
+                      if (myPosts.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.all(40.0),
+                          child: Center(child: Text("尚無作品", style: TextStyle(color: Colors.grey))),
+                        );
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: WaterfallFeed(items: myPosts),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -324,22 +333,4 @@ class _ProfileStatItem extends StatelessWidget {
   const _ProfileStatItem({required this.count, required this.label});
   @override
   Widget build(BuildContext context) => Column(children: [Text(count, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey))]);
-}
-
-class _ProfileActionButton extends StatelessWidget {
-  final String text;
-  final VoidCallback? onTap;
-  const _ProfileActionButton({required this.text, this.onTap});
-
-  @override
-  Widget build(BuildContext context) => OutlinedButton(
-    onPressed: onTap ?? () {},
-    style: OutlinedButton.styleFrom(
-      foregroundColor: Colors.black,
-      side: BorderSide(color: Colors.grey[300]!),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      padding: const EdgeInsets.symmetric(vertical: 12)
-    ),
-    child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold))
-  );
 }
