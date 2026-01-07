@@ -1,6 +1,5 @@
 // lib/models/cart_item.dart
 enum ItemType { product, reservation }
-bool isSelected = true; // 預設選取
 
 class CartItem {
   final String id;
@@ -10,8 +9,8 @@ class CartItem {
   final String image;
   final ItemType type;
   final String? bookingDate;
-  final int? peopleCount; // [新增] 預約人數欄位
-  bool isSelected; // [新增] 記錄選取狀態
+  final int? peopleCount;
+  bool isSelected;
 
   CartItem({
     required this.id,
@@ -21,7 +20,38 @@ class CartItem {
     required this.image,
     this.type = ItemType.product,
     this.bookingDate,
-    this.peopleCount, // [新增]
-    this.isSelected = true, // [新增] 預設為全選
+    this.peopleCount,
+    this.isSelected = true,
   });
+
+  // ==========================================
+  // 👇 新增：解析後端 JSON
+  // ==========================================
+  factory CartItem.fromJson(Map<String, dynamic> json) {
+    // 1. 取得巢狀的 product 物件
+    // 後端回傳結構長這樣: 
+    // { 
+    //   "id": 1, 
+    //   "quantity": 2, 
+    //   "product": { "name": "...", "price": 100, "imageUrl": "..." } 
+    // }
+    final product = json['product'];
+
+    // 2. 防呆處理：萬一 product 是 null (雖然理論上不該發生)
+    final productName = product != null ? product['name'] : '未知商品';
+    // 處理價格：後端可能是 Double 或 Int，用 num 接比較安全
+    final productPrice = product != null ? (product['price'] as num).toInt() : 0;
+    // 假設後端 Product 有 imageUrl 欄位，若無則給假圖
+    final productImage = product != null ? (product['imageUrl'] ?? 'https://via.placeholder.com/150') : 'https://via.placeholder.com/150';
+
+    return CartItem(
+      id: json['id'].toString(), // 轉字串
+      name: productName,
+      price: productPrice,
+      quantity: json['quantity'] ?? 1,
+      image: productImage,
+      type: ItemType.product, // 後端目前只有一般商品
+      isSelected: true, // 載入時預設勾選
+    );
+  }
 }

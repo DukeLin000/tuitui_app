@@ -1,21 +1,19 @@
 // lib/providers/cart_provider.dart
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../models/cart_item.dart';
+import '../services/api_service.dart'; // [新增] 引入 API 服務
 
 class CartProvider extends ChangeNotifier {
-  // 內部私有變數，儲存購物車商品
-  final List<CartItem> _items = [];
-
-  // 1. 讀取購物車列表 (唯讀)
-  List<CartItem> get items => List.unmodifiable(_items);
-
-  // 2. 取得商品總數 (清單內的項目種類數量)
-  int get itemCount => _items.length;
+  List<CartItem> _items = [];
+  bool isLoading = false;
   
-  // [新增] 取得總金額 (Getter for totalPrice) - 修正您 checkout_screen 可能用到的屬性名稱
+  // [新增] 暫時寫死的測試用戶 ID (之後需串接 AuthProvider)
+  final String _testUserId = "user_001"; 
+
+  List<CartItem> get items => List.unmodifiable(_items);
+  int get itemCount => _items.length;
   int get totalPrice => totalAmount;
 
-  // 3. 計算總金額 [修改：僅計算被勾選的項目]
   int get totalAmount {
     var total = 0;
     for (var item in _items) {
@@ -26,47 +24,27 @@ class CartProvider extends ChangeNotifier {
     return total;
   }
 
-  // [新增] 判斷是否全部選取
   bool get isAllSelected => _items.isNotEmpty && _items.every((item) => item.isSelected);
 
-  // [新增] 切換單一商品勾選狀態
-  void toggleItemSelection(String id) {
-    final index = _items.indexWhere((item) => item.id == id);
-    if (index >= 0) {
-      _items[index].isSelected = !_items[index].isSelected;
+  // [新增] 從後端同步購物車
+  Future<void> fetchCart() async {
+    isLoading = true;
+    notifyListeners();
+    
+    try {
+      // 呼叫 API 取得最新購物車狀態
+      _items = await ApiService.fetchCart(_testUserId);
+    } catch (e) {
+      print("Error fetching cart: $e");
+    } finally {
+      isLoading = false;
       notifyListeners();
     }
   }
 
-  // [新增] 全選或取消全選
-  void toggleAllSelection(bool selected) {
-    for (var item in _items) {
-      item.isSelected = selected;
-    }
-    notifyListeners();
-  }
-
-  // [新增] 這是您缺少的關鍵方法！接收 CartItem 物件
-  void addItem(CartItem item) {
-    // 簡單判斷：如果是實體商品且 ID 相同則合併數量 (視您的 ID 生成邏輯而定)
-    if (item.type == ItemType.product) {
-      final index = _items.indexWhere((i) => i.id == item.id);
-      if (index >= 0) {
-        _items[index].quantity += item.quantity;
-        _items[index].isSelected = true; // 重新加入時自動勾選
-      } else {
-        _items.add(item);
-      }
-    } else {
-      // 預約類商品直接加入
-      _items.add(item);
-    }
-    notifyListeners();
-  }
-
-  // 4. 原有的加入購物車邏輯 (保留)
-  void addToCart(
-    String id, 
+  // [修改] 加入購物車 (改為呼叫後端)
+  Future<void> addToCart(
+    String id, // 這裡傳入的是 productId
     String name, 
     int price, 
     String image, 
@@ -75,57 +53,58 @@ class CartProvider extends ChangeNotifier {
       String? bookingDate,
       int? peopleCount,
     }
-  ) {
-    if (type == ItemType.product) {
-      final index = _items.indexWhere((item) => item.id == id && item.type == ItemType.product);
-      
-      if (index >= 0) {
-        _items[index].quantity += 1;
-        _items[index].isSelected = true;
-      } else {
-        _items.add(CartItem(
-          id: id, 
-          name: name, 
-          price: price, 
-          image: image, 
-          quantity: 1,
-          type: type,
-          isSelected: true,
-        ));
-      }
+  ) async {
+    // 1. 呼叫後端 API
+    // 注意：後端目前只需要 productId 和 quantity，不需要 name/price (後端會自己查)
+    bool success = await ApiService.addToCart(_testUserId, id, 1);
+    
+    if (success) {
+      // 2. 成功後，重新從後端抓取最新資料，確保 ID 和資訊一致
+      await fetchCart();
+      print("已加入購物車並同步後端");
     } else {
-      final uniqueId = "${id}_${DateTime.now().millisecondsSinceEpoch}";
-      _items.add(CartItem(
-        id: uniqueId, 
-        name: name, 
-        price: price, 
-        image: image, 
-        quantity: 1,
-        type: type,
-        bookingDate: bookingDate,
-        peopleCount: peopleCount,
-        isSelected: true,
-      ));
+      print("加入購物車失敗");
     }
-    notifyListeners();
   }
 
-  // 5. 更新數量 (增加或減少)
+  // [新增] 為了相容您原本的 addItem 方法 (如果是直接操作物件)
+  Future<void> addItem(CartItem item) async {
+     // 這裡假設 item.id 是 productId (因為是從 UI 傳來的)
+     await addToCart(item.id, item.name, item.price, item.image);
+  }
+
+  // --- 以下功能目前維持「本地端操作」，因為後端尚未實作對應 API ---
+  
   void updateQuantity(String id, int delta) {
     final index = _items.indexWhere((item) => item.id == id);
     if (index >= 0) {
       _items[index].quantity += delta;
-      
       if (_items[index].quantity <= 0) {
         _items.removeAt(index);
       }
       notifyListeners();
     }
+    // TODO: 之後後端補上 PATCH /api/commerce/cart/quantity 時再來串接
   }
 
-  // 6. 清空購物車
+  void toggleItemSelection(String id) {
+    final index = _items.indexWhere((item) => item.id == id);
+    if (index >= 0) {
+      _items[index].isSelected = !_items[index].isSelected;
+      notifyListeners();
+    }
+  }
+
+  void toggleAllSelection(bool selected) {
+    for (var item in _items) {
+      item.isSelected = selected;
+    }
+    notifyListeners();
+  }
+
   void clear() {
     _items.clear();
     notifyListeners();
+    // TODO: 之後後端補上 DELETE /api/commerce/cart 時再來串接
   }
 }
