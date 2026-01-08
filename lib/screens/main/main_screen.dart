@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/auth_provider.dart'; 
 import '../../widgets/map_view_overlay.dart';
-// [刪除] import '../../widgets/user_profile_modal.dart'; 
 import '../../widgets/cart_overlay.dart';
+import '../../config/app_config.dart'; // [必要] 確保引入設定檔
 
 // 引入頁面
 import 'home_screen.dart';
@@ -85,7 +85,7 @@ class SettingsScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 主畫面
+// 主畫面 (核心修改)
 // ---------------------------------------------------------------------------
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -100,12 +100,114 @@ class _MainScreenState extends State<MainScreen> {
   // --- Overlays 狀態 ---
   bool _showMapView = false;
   bool _showCart = false;
-  // [刪除] Map<String, dynamic>? _selectedUser; // 不再需要，改由頁面內部跳轉
+
+  // [新增] 定義導航項目結構
+  late final List<Map<String, dynamic>> _navItems;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // 定義各個頁面元件
+    
+    // 1. 首頁
+    final homeItem = {
+      'page': const HomeScreen(),
+      'item': const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: '推推'),
+      'requireAuth': false,
+    };
+
+    // 2. 市集 (包含購物車圖示邏輯)
+    final marketItem = {
+      'page': MarketScreen(
+        onOpenCart: () => setState(() => _showCart = true),
+        onOpenMap: () => setState(() => _showMapView = true),
+      ),
+      'item': BottomNavigationBarItem(
+        icon: Consumer<CartProvider>(
+          builder: (context, cart, child) {
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.storefront_outlined),
+                if (cart.itemCount > 0)
+                  Positioned(
+                    right: -2, top: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                      constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
+                    ),
+                  )
+              ],
+            );
+          },
+        ),
+        activeIcon: const Icon(Icons.storefront), 
+        label: '市集'
+      ),
+      'requireAuth': false,
+    };
+
+    // 3. 發文 (加上文字標籤 '發佈' 以平衡視覺高度)
+    final createPostItem = {
+      'page': const CreatePostScreen(),
+      'item': const BottomNavigationBarItem(
+        icon: Icon(Icons.add_circle_outline, size: 32), 
+        activeIcon: Icon(Icons.add_circle, size: 32), 
+        label: '發佈' // [建議] 加上文字，讓按鈕高度跟旁邊一致
+      ),
+      'requireAuth': true,
+    };
+
+    // 4. 聊天
+    final chatItem = {
+      'page': const ChatTabScreen(),
+      'item': const BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: '聊天'),
+      'requireAuth': true,
+    };
+
+    // 5. 個人
+    final profileItem = {
+      'page': ProfileScreen(
+        onSettingsTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+      ), 
+      'item': const BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: '個人'),
+      'requireAuth': false,
+    };
+
+    // [重點設計] 根據開關決定排列順序
+    if (AppConfig.enableCommerce) {
+      // 開啟電商：標準 5 欄位
+      // 順序：首頁 -> 市集 -> 發文 -> 聊天 -> 個人
+      _navItems = [
+        homeItem,
+        marketItem,
+        createPostItem,
+        chatItem,
+        profileItem,
+      ];
+    } else {
+      // 關閉電商：平衡 4 欄位 (IG 風格)
+      // 順序：首頁 -> 聊天 -> 發文 -> 個人
+      // [解釋] 將「聊天」往前移，讓「發文」落在第 3 位，操作手感更好，視覺也更平衡
+      _navItems = [
+        homeItem,
+        chatItem,       // <--- 往前移
+        createPostItem, // <--- 變成第 3 個
+        profileItem,
+      ];
+    }
+  }
 
   void _onTabTapped(int index) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    
+    // [修改] 動態判斷是否需要登入，不再寫死 index
+    final targetItem = _navItems[index];
+    final bool requireAuth = targetItem['requireAuth'] ?? false;
 
-    if (!auth.isLoggedIn && (index == 2 || index == 3 || index == 4)) {
+    if (requireAuth && !auth.isLoggedIn) {
       final result = await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -125,101 +227,41 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    Widget bodyContent;
-    
-    switch (_selectedIndex) {
-      case 0: 
-        // [修改] 這裡的 HomeScreen 不再需要 onUserTap 回調
-        // 因為點擊頭像的跳轉邏輯已經封裝在 PostCard 和 WaterfallFeed 裡面了
-        bodyContent = const HomeScreen(); 
-        break;
-      case 1: 
-        bodyContent = MarketScreen(
-          onOpenCart: () => setState(() => _showCart = true),
-          onOpenMap: () => setState(() => _showMapView = true),
-        ); 
-        break;
-      case 2: 
-        bodyContent = const CreatePostScreen(); 
-        break;
-      case 3: 
-        bodyContent = const ChatTabScreen(); 
-        break;
-      case 4: 
-        bodyContent = ProfileScreen(
-          onSettingsTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
-        ); 
-        break;
-      default: 
-        bodyContent = const Center(child: Text("Error"));
-    }
+    // [修改] 直接從列表中取得當前頁面，不需要 switch-case，這樣順序永遠正確
+    final Widget bodyContent = _navItems[_selectedIndex]['page'] as Widget;
 
     return Stack(
       children: [
         Scaffold(
-          // [注意] 只有首頁不再強制顯示 AppBar，因為 HomeScreen 已經改用 NestedScrollView 自帶 AppBar
-          // 如果您想要統一，這裡可以把 appBar 設為 null，讓各頁面自己處理
           appBar: null, 
-          
           body: bodyContent,
           
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: _onTabTapped,
-            type: BottomNavigationBarType.fixed,
+            type: BottomNavigationBarType.fixed, // 保持 fixed，讓 4 個按鈕平均分佈
             backgroundColor: Colors.white,
             selectedItemColor: Colors.purple,
             unselectedItemColor: Colors.grey,
-            items: [
-              const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: '推推'),
-              
-              BottomNavigationBarItem(
-                icon: Consumer<CartProvider>(
-                  builder: (context, cart, child) {
-                    return Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        const Icon(Icons.storefront_outlined),
-                        if (cart.itemCount > 0)
-                          Positioned(
-                            right: -2,
-                            top: -2,
-                            child: Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                              constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
-                            ),
-                          )
-                      ],
-                    );
-                  },
-                ),
-                activeIcon: const Icon(Icons.storefront), 
-                label: '市集'
-              ),
-              
-              const BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline, size: 32), activeIcon: Icon(Icons.add_circle, size: 32), label: ''),
-              const BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: '聊天'),
-              const BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: '個人'),
-            ],
+            // [關鍵] 字體大小調整，讓排版看起來不那麼空
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            unselectedLabelStyle: const TextStyle(fontSize: 12),
+            // [修改] 動態產生 Items
+            items: _navItems.map((e) => e['item'] as BottomNavigationBarItem).toList(),
           ),
         ),
 
         // --- 全域覆蓋層 (Overlays) ---
-        
-        // 1. 地圖覆蓋層
-        if (_showMapView) 
+        // 只有開啟商城功能時，才有可能觸發這些 Overlay
+        if (AppConfig.enableCommerce && _showMapView) 
           Positioned.fill(child: MapViewOverlay(onClose: () => setState(() => _showMapView = false))),
         
-        // 2. 購物車覆蓋層
-        if (_showCart) 
+        if (AppConfig.enableCommerce && _showCart) 
           Positioned.fill(
             child: CartOverlay(
               onClose: () => setState(() => _showCart = false), 
             )
           ),
-          
-        // [刪除] 個人檔案 Modal，已經被 ProfileScreen 頁面跳轉取代
       ],
     );
   }

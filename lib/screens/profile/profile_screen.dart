@@ -2,18 +2,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/post_provider.dart'; // [新增] 引入 PostProvider
+import '../../providers/post_provider.dart';
 import '../../models/waterfall_item.dart';
 import '../../widgets/waterfall_feed.dart';
 import '../../widgets/responsive_container.dart';
+import '../../config/app_config.dart'; // 請確保此檔案已建立
 import 'edit_profile_screen.dart';
 import '../merchant/merchant_dashboard_screen.dart';
 import '../shop/buyer_order_list_screen.dart';
 import '../chat/chat_room_screen.dart';
+import '../auth/login_screen.dart'; 
 
 class ProfileScreen extends StatefulWidget {
-  // 如果傳入 null，代表是用戶看自己 (Tab模式)
-  // 如果有傳入 userId，代表是看別人的公開頁
   final String? userId;
   final String? userName;
   final String? userAvatar;
@@ -32,13 +32,9 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // 這些之後應該從 API 獲取
   String _bio = "歡迎來到我的試衣間 ✨ 分享日常穿搭與美好生活";
-  bool _isFollowing = false; // 追蹤狀態 (僅看別人時使用)
+  bool _isFollowing = false; 
 
-  // [移除] static const List<WaterfallItem> _userWorks ... (改用 Provider)
-
-  // 編輯頁面跳轉
   void _navigateToEditProfile(String currentName, String currentAvatar) async {
     final result = await Navigator.push(
       context,
@@ -58,7 +54,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // 跳轉到商家中心
   void _navigateToMerchantCenter() {
     Navigator.push(
       context,
@@ -66,7 +61,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // 跳轉到我的訂單
   void _navigateToMyOrders() {
     Navigator.push(
       context,
@@ -76,16 +70,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 判斷是否為「看自己」
+    // 1. 獲取 AuthProvider 狀態
+    final auth = context.watch<AuthProvider>();
+
+    // 2. 判斷是否為「看自己」
     final bool isMe = widget.userId == null;
 
-    final String displayName = isMe ? "推推用戶" : (widget.userName ?? "未知用戶");
+    // 3. [核心修正] 如果是看自己，但尚未登入，顯示訪客畫面
+    if (isMe && !auth.isLoggedIn) {
+      return _buildGuestView(context);
+    }
+
+    // --- 以下為登入後的正常邏輯 ---
+
+    // 4. [修正] 將 auth.user 改為 auth.userProfile 以配合 AuthProvider 定義
+    final String displayName = isMe 
+        ? (auth.userProfile['name'] ?? "推推用戶") 
+        : (widget.userName ?? "未知用戶");
+        
     final String displayAvatar = isMe 
-        ? "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100" 
+        ? (auth.userProfile['avatar'] ?? "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100")
         : (widget.userAvatar ?? "https://via.placeholder.com/150");
 
-    // 監聽商家狀態
-    final isMerchant = isMe && context.watch<AuthProvider>().isMerchant;
+    // 監聽商家狀態：加入 AppConfig 全域開關判斷
+    final isMerchant = isMe && 
+                       AppConfig.enableCommerce && 
+                       auth.isMerchant;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -160,29 +170,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(_bio, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                  
+                  // [固定間距] Bio 下方永遠先給 20px
                   const SizedBox(height: 20),
 
                   // --- 按鈕區 ---
                   if (isMe) ...[
-                    // [看自己]
-                    _buildMenuRow(
-                      icon: Icons.receipt_long_outlined,
-                      color: Colors.blue,
-                      title: "我的訂單",
-                      onTap: _navigateToMyOrders
-                    ),
-                    const SizedBox(height: 12),
-
-                    if (isMerchant)
+                    if (AppConfig.enableCommerce) ...[
                       _buildMenuRow(
-                        icon: Icons.storefront,
-                        color: Colors.purple,
-                        title: "商家中心",
-                        subtitle: "管理商品與營收",
-                        onTap: _navigateToMerchantCenter
+                        icon: Icons.receipt_long_outlined,
+                        color: Colors.blue,
+                        title: "我的訂單",
+                        onTap: _navigateToMyOrders
                       ),
+                      const SizedBox(height: 12),
 
-                    const SizedBox(height: 20),
+                      if (isMerchant) ...[
+                        _buildMenuRow(
+                          icon: Icons.storefront,
+                          color: Colors.purple,
+                          title: "商家中心",
+                          subtitle: "管理商品與營收",
+                          onTap: _navigateToMerchantCenter
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      const SizedBox(height: 8),
+                    ],
+
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
@@ -250,25 +266,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   
-                  // [核心修改] 使用 Consumer 獲取動態作品集
+                  // 使用 Consumer 獲取動態作品集
                   Consumer<PostProvider>(
                     builder: (context, postProvider, child) {
-                      // 過濾邏輯：
-                      // 如果是看自己 (isMe)，顯示作者是 '我 (Me)' 的貼文 (對應 CreatePostScreen 發布時的名稱)
-                      // 如果是看別人，顯示作者名稱符合的貼文
                       final myPosts = postProvider.discoveryItems.where((item) {
                         if (isMe) {
-                          // [注意] 這裡要跟 CreatePostScreen 裡的 authorName 對應
-                          // 為了相容性，這裡判斷 '我 (Me)' 或 'Me'
+                          // [注意] 判斷是否為「我」發的文
                           return item.authorName == '我 (Me)' || item.authorName == 'Me';
                         } else {
-                          // 比對 userName 或 userId (視您的資料而定)
-                          // 這裡的邏輯是：只要 authorName 跟傳進來的 userName 一樣就顯示
                           return item.authorName == widget.userName || item.authorName == widget.userId;
                         }
                       }).toList();
 
-                      // 如果沒有內容，可以顯示空狀態
                       if (myPosts.isEmpty) {
                         return const Padding(
                           padding: EdgeInsets.all(40.0),
@@ -287,6 +296,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           )
         ],
+      ),
+    );
+  }
+
+  // [新增] 訪客模式畫面
+  Widget _buildGuestView(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text("個人檔案", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        actions: [
+          IconButton(onPressed: widget.onSettingsTap, icon: const Icon(Icons.settings_outlined, color: Colors.black))
+        ],
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.purple.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.person_outline, size: 60, color: Colors.purple),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "登入以查看您的個人檔案",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "管理您的訂單、收藏與個人作品",
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 30),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  ),
+                  child: const Text("登入 / 註冊", style: TextStyle(fontSize: 16)),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
