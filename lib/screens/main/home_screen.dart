@@ -56,67 +56,72 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           floatHeaderSlivers: true,
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
-              SliverAppBar(
-                backgroundColor: Colors.white,
-                elevation: 0,
-                pinned: true,
-                floating: true,
-                snap: true,
-                titleSpacing: 16,
-                
-                // 1. 頂部搜尋框
-                title: GestureDetector(
-                  onTap: _onSearchTap,
-                  child: Container(
-                    height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.search, size: 20, color: Colors.grey),
-                        const SizedBox(width: 8),
-                        
-                        // ★★★ [修正點 1] 加入 Expanded 解決文字溢位崩潰問題 ★★★
-                        Expanded(
-                          child: Text(
-                            "搜尋好店、穿搭靈感...", 
-                            style: TextStyle(color: Colors.grey[400], fontSize: 14),
-                            overflow: TextOverflow.ellipsis, // 多餘文字顯示 ...
-                            maxLines: 1, // 限制一行
+              // ★★★ [關鍵修正] 必須用 SliverOverlapAbsorber 包裹 SliverAppBar ★★★
+              // 這樣下方的 Injector 才能抓到正確的高度，解決崩潰問題
+              SliverOverlapAbsorber(
+                handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                sliver: SliverAppBar(
+                  backgroundColor: Colors.white,
+                  elevation: 0,
+                  pinned: true,
+                  floating: true,
+                  snap: true,
+                  titleSpacing: 16,
+                  
+                  // 1. 頂部搜尋框
+                  title: GestureDetector(
+                    onTap: _onSearchTap,
+                    child: Container(
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.search, size: 20, color: Colors.grey),
+                          const SizedBox(width: 8),
+                          
+                          // Expanded 解決文字溢位崩潰問題
+                          Expanded(
+                            child: Text(
+                              "搜尋好店、穿搭靈感...", 
+                              style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                // 右上角動作區：加入地圖按鈕
-                actions: [
-                  if (widget.onOpenMap != null)
-                    IconButton(
-                      icon: const Icon(Icons.map_outlined, color: Colors.black87),
-                      tooltip: "附近店家",
-                      onPressed: widget.onOpenMap,
-                    ),
-                  const SizedBox(width: 8), 
-                ],
-                
-                // 2. 分頁標籤
-                bottom: TabBar(
-                  controller: _tabController,
-                  labelColor: Colors.purple,
-                  unselectedLabelColor: Colors.grey,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  indicatorColor: Colors.purple,
-                  indicatorSize: TabBarIndicatorSize.label,
-                  indicatorWeight: 3,
-                  tabs: const [
-                    Tab(text: "發現"),
-                    Tab(text: "追蹤"),
+                  // 右上角動作區：加入地圖按鈕
+                  actions: [
+                    if (widget.onOpenMap != null)
+                      IconButton(
+                        icon: const Icon(Icons.map_outlined, color: Colors.black87),
+                        tooltip: "附近店家",
+                        onPressed: widget.onOpenMap,
+                      ),
+                    const SizedBox(width: 8), 
                   ],
+                  
+                  // 2. 分頁標籤
+                  bottom: TabBar(
+                    controller: _tabController,
+                    labelColor: Colors.purple,
+                    unselectedLabelColor: Colors.grey,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    indicatorColor: Colors.purple,
+                    indicatorSize: TabBarIndicatorSize.label,
+                    indicatorWeight: 3,
+                    tabs: const [
+                      Tab(text: "發現"),
+                      Tab(text: "追蹤"),
+                    ],
+                  ),
                 ),
               ),
             ];
@@ -133,8 +138,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 builder: (context, postProvider, child) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                    // 這裡保留您原本的 WaterfallFeed
-                    // 如果 WaterfallFeed 內部是用 GridView，建議確認它是否支援 NestedScrollView 的滑動
                     child: WaterfallFeed(items: postProvider.discoveryItems),
                   );
                 },
@@ -142,7 +145,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               
               // ---------------------------------------------------------------
               // 分頁 B：追蹤頁 (Following)
-              // ★★★ [修正點 2] 改用 CustomScrollView + SliverOverlapInjector 優化滑動體驗 ★★★
               // ---------------------------------------------------------------
               Consumer<PostProvider>(
                 builder: (context, postProvider, child) {
@@ -152,15 +154,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   return Builder(
                     builder: (BuildContext context) {
                       return CustomScrollView(
-                        // 保持滑動位置的 key
                         key: const PageStorageKey<String>('following'),
                         slivers: <Widget>[
-                          // 這個 Injector 會確保內容不被上方的 AppBar 擋住
+                          // 這個 Injector 現在可以正確工作了，因為上面有了 Absorber
                           SliverOverlapInjector(
                             handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
                           ),
                           
-                          // 將原本的 ListView 改為 SliverList
                           SliverList(
                             delegate: SliverChildBuilderDelegate(
                               (BuildContext context, int index) {

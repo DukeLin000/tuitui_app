@@ -4,6 +4,9 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 
+// 引入設定檔
+import '../config/map_style.dart'; 
+
 class MapViewOverlay extends StatefulWidget {
   final VoidCallback onClose;
 
@@ -31,6 +34,7 @@ class _MapViewOverlayState extends State<MapViewOverlay> {
       "lng": 121.5204,
       "category": "咖啡廳",
       "rating": 4.8,
+      "pushCount": 156, // 推推數
       "image": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=200",
     },
     {
@@ -40,6 +44,7 @@ class _MapViewOverlayState extends State<MapViewOverlay> {
       "lng": 121.5215,
       "category": "百貨",
       "rating": 4.9,
+      "pushCount": 342, // 推推數
       "image": "https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=200",
     },
     {
@@ -49,6 +54,7 @@ class _MapViewOverlayState extends State<MapViewOverlay> {
       "lng": 121.5645,
       "category": "酒吧",
       "rating": 4.6,
+      "pushCount": 89, // 推推數
       "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=200",
     },
   ];
@@ -64,24 +70,49 @@ class _MapViewOverlayState extends State<MapViewOverlay> {
     _locateUser(); // 嘗試抓取目前位置
   }
 
-  // 1. 建立地標
+  // 1. 建立地標 (動態更新顏色)
   void _loadMarkers() {
     setState(() {
       _markers = _mockBackendStores.map((store) {
+        
+        // 判斷是否為「目前選中」的店家
+        bool isSelected = (store['id'] == _selectedShopId);
+
         return Marker(
           markerId: MarkerId(store['id']),
           position: LatLng(store['lat'], store['lng']),
-          infoWindow: InfoWindow(title: store['name']), // 點擊顯示名稱
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet), // 推推專屬紫色
+          
+          // 移除 InfoWindow，改用圖釘顏色區分
+          // 如果被選中，顯示「橘色」；沒選中，顯示「推推紫」
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            isSelected ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueViolet
+          ),
+          
+          // 被選中的圖釘要浮在最上面
+          zIndex: isSelected ? 10.0 : 1.0,
+
           onTap: () {
             setState(() {
               _selectedShopId = store['id'];
               _selectedShopData = store;
+              
+              // 點擊後，因為 _selectedShopId 改變了，重新繪製 Markers 讓顏色生效
+              _loadMarkers(); 
             });
+
+            // 點擊後自動將鏡頭移到該店家
+            _moveCameraToShop(store['lat'], store['lng']);
           },
         );
       }).toSet();
     });
+  }
+
+  // 鏡頭移動小幫手
+  Future<void> _moveCameraToShop(double lat, double lng) async {
+    final GoogleMapController controller = await _controller.future;
+    // 稍微往下移一點點，避開底部卡片
+    controller.animateCamera(CameraUpdate.newLatLng(LatLng(lat - 0.002, lng)));
   }
 
   // 2. 定位使用者
@@ -129,13 +160,28 @@ class _MapViewOverlayState extends State<MapViewOverlay> {
             zoomControlsEnabled: false, // 隱藏醜醜的縮放按鈕
             onMapCreated: (GoogleMapController controller) {
               _controller.complete(controller);
+              
+              // 套用推推風格
+              try {
+                controller.setMapStyle(
+                  TuiTuiMapStyles.getStyle(
+                    showBusiness: true, 
+                    showTransit: true, 
+                  )
+                );
+              } catch (e) {
+                print("Map style error: $e");
+              }
             },
+            // ★★★ [這裡修改] 點擊空白處，還原圖釘顏色 ★★★
             onTap: (_) {
-              // 點擊地圖空白處，關閉卡片
               if (_selectedShopId != null) {
                 setState(() {
                   _selectedShopId = null;
                   _selectedShopData = null;
+                  
+                  // ★ 重新載入 Markers，讓所有圖釘變回紫色
+                  _loadMarkers();
                 });
               }
             },
@@ -229,8 +275,11 @@ class _MapViewOverlayState extends State<MapViewOverlay> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // 店名
                 Text(shop['name'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
+                
+                // 類別與評分
                 Row(
                   children: [
                     Container(
@@ -243,8 +292,19 @@ class _MapViewOverlayState extends State<MapViewOverlay> {
                     Text(" ${shop['rating']}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text("點擊查看詳情 >", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                
+                const SizedBox(height: 4),
+
+                // 推推數顯示
+                Row(
+                  children: [
+                    const Icon(Icons.local_fire_department, size: 14, color: Colors.deepOrange),
+                    Text(
+                      " ${shop['pushCount']} 人推推", 
+                      style: const TextStyle(fontSize: 12, color: Colors.deepOrange, fontWeight: FontWeight.bold)
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
