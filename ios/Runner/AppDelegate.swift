@@ -11,7 +11,7 @@ import GoogleMaps  // [新增] 引入 Google Maps 函式庫
     
     // [新增] 設定 Google Maps API Key
     // 請確認這組 Key 在 Google Cloud Console 有啟用 "Maps SDK for iOS"
-    GMSServices.provideAPIKey("")
+    GMSServices.provideAPIKey("AIzaSyDLTl5A-8lkGdrtaFMwusoKUwhc9KG_wlI")
 
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
