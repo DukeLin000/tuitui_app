@@ -110,9 +110,11 @@ class _MainScreenState extends State<MainScreen> {
     
     // 定義各個頁面元件
     
-    // 1. 首頁
+    // 1. 首頁 (傳入打開地圖的動作)
     final homeItem = {
-      'page': const HomeScreen(),
+      'page': HomeScreen(
+        onOpenMap: () => setState(() => _showMapView = true),
+      ),
       'item': const BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: '推推'),
       'requireAuth': false,
     };
@@ -252,10 +254,15 @@ class _MainScreenState extends State<MainScreen> {
         ),
 
         // --- 全域覆蓋層 (Overlays) ---
-        // 只有開啟商城功能時，才有可能觸發這些 Overlay
-        if (AppConfig.enableCommerce && _showMapView) 
+        
+        // 1. 地圖覆蓋層
+        // [修正] 移除 AppConfig.enableCommerce 的限制
+        // 讓地圖功能在純社群模式下也能運作
+        if (_showMapView) 
           Positioned.fill(child: MapViewOverlay(onClose: () => setState(() => _showMapView = false))),
         
+        // 2. 購物車覆蓋層
+        // 購物車則維持原本判斷，只有開電商才顯示
         if (AppConfig.enableCommerce && _showCart) 
           Positioned.fill(
             child: CartOverlay(

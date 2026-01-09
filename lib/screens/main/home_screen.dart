@@ -1,18 +1,22 @@
 // lib/screens/main/home_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // [新增] 引入 Provider
+import 'package:provider/provider.dart'; 
 import '../../models/post.dart';
 import '../../widgets/post_card.dart';
 import '../../models/waterfall_item.dart';
 import '../../widgets/waterfall_feed.dart';
 import '../../widgets/responsive_container.dart';
-import '../../providers/post_provider.dart'; // [新增] 引入 PostProvider
-// 引入搜尋頁面
+import '../../providers/post_provider.dart'; 
 import '../shop/search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  // [修改] 移除 onUserTap，因為現在點擊邏輯已經下放到各個組件內部
-  const HomeScreen({super.key});
+  // 接收外部傳入的「打開地圖」方法
+  final VoidCallback? onOpenMap;
+
+  const HomeScreen({
+    super.key, 
+    this.onOpenMap 
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -20,9 +24,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  // [刪除] 原本的 static const _followingPosts 與 _discoveryItems
-  // 現在資料都統一交給 PostProvider 管理
 
   @override
   void initState() {
@@ -77,14 +78,31 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       children: [
                         const Icon(Icons.search, size: 20, color: Colors.grey),
                         const SizedBox(width: 8),
-                        Text(
-                          "搜尋好店、穿搭靈感...", 
-                          style: TextStyle(color: Colors.grey[400], fontSize: 14)
+                        
+                        // ★★★ [修正點 1] 加入 Expanded 解決文字溢位崩潰問題 ★★★
+                        Expanded(
+                          child: Text(
+                            "搜尋好店、穿搭靈感...", 
+                            style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                            overflow: TextOverflow.ellipsis, // 多餘文字顯示 ...
+                            maxLines: 1, // 限制一行
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
+
+                // 右上角動作區：加入地圖按鈕
+                actions: [
+                  if (widget.onOpenMap != null)
+                    IconButton(
+                      icon: const Icon(Icons.map_outlined, color: Colors.black87),
+                      tooltip: "附近店家",
+                      onPressed: widget.onOpenMap,
+                    ),
+                  const SizedBox(width: 8), 
+                ],
                 
                 // 2. 分頁標籤
                 bottom: TabBar(
@@ -109,32 +127,53 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             controller: _tabController,
             children: [
               // ---------------------------------------------------------------
-              // 分頁 A：發現頁 (Discovery) - 使用 Provider 的 discoveryItems
+              // 分頁 A：發現頁 (Discovery)
               // ---------------------------------------------------------------
               Consumer<PostProvider>(
                 builder: (context, postProvider, child) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    // 這裡保留您原本的 WaterfallFeed
+                    // 如果 WaterfallFeed 內部是用 GridView，建議確認它是否支援 NestedScrollView 的滑動
                     child: WaterfallFeed(items: postProvider.discoveryItems),
                   );
                 },
               ),
               
               // ---------------------------------------------------------------
-              // 分頁 B：追蹤頁 (Following) - 使用 Provider 的 items
+              // 分頁 B：追蹤頁 (Following)
+              // ★★★ [修正點 2] 改用 CustomScrollView + SliverOverlapInjector 優化滑動體驗 ★★★
               // ---------------------------------------------------------------
               Consumer<PostProvider>(
                 builder: (context, postProvider, child) {
                   final posts = postProvider.items;
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    itemCount: posts.length,
-                    itemBuilder: (context, index) {
-                      final post = posts[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                        // PostCard 已經內建點擊跳轉邏輯
-                        child: PostCard(post: post),
+                  
+                  // 使用 Builder 取得正確的 context
+                  return Builder(
+                    builder: (BuildContext context) {
+                      return CustomScrollView(
+                        // 保持滑動位置的 key
+                        key: const PageStorageKey<String>('following'),
+                        slivers: <Widget>[
+                          // 這個 Injector 會確保內容不被上方的 AppBar 擋住
+                          SliverOverlapInjector(
+                            handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                          ),
+                          
+                          // 將原本的 ListView 改為 SliverList
+                          SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (BuildContext context, int index) {
+                                final post = posts[index];
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                  child: PostCard(post: post),
+                                );
+                              },
+                              childCount: posts.length,
+                            ),
+                          ),
+                        ],
                       );
                     },
                   );
