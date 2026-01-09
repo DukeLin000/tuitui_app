@@ -12,11 +12,12 @@ import 'home_screen.dart';
 import '../market/market_screen.dart';
 import 'create_post_screen.dart';
 import '../profile/profile_screen.dart';
+import '../profile/edit_profile_screen.dart'; // [新增] 引入編輯個人資料頁面
 import '../chat/chat_tab_screen.dart';
 import '../auth/login_screen.dart'; 
 
 // ---------------------------------------------------------------------------
-// 設定頁面 (保持不變)
+// 設定頁面
 // ---------------------------------------------------------------------------
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -40,33 +41,73 @@ class SettingsScreen extends StatelessWidget {
                 child: Text("帳號", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
               ),
               ListTile(
-                leading: const Icon(Icons.person_outline),
+                // [修改] 移除了 leading ICON (Icons.person_outline)
                 title: const Text("個人資料"),
                 trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-                onTap: () {},
-              ),
-              const Divider(height: 1),
-              
-              SwitchListTile(
-                secondary: const Icon(Icons.storefront, color: Colors.purple),
-                title: const Text("商家模式"),
-                subtitle: Text(
-                  auth.isMerchant ? "已啟用商家功能" : "切換以管理商品與預約",
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-                value: auth.isMerchant,
-                activeColor: Colors.purple,
-                onChanged: (bool value) {
-                  auth.toggleMerchantMode();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(value ? "歡迎使用商家中心！請至個人頁查看。" : "已切換回個人模式"),
-                      duration: const Duration(seconds: 2),
-                    )
+                // [修改] 連結到編輯個人資料頁面
+                onTap: () async {
+                  // 1. 處理生日資料型別轉換 (String/DateTime 兼容)
+                  DateTime? birthDate;
+                  final rawDate = auth.userProfile['birthday'];
+                  if (rawDate is DateTime) {
+                    birthDate = rawDate;
+                  } else if (rawDate is String) {
+                    birthDate = DateTime.tryParse(rawDate);
+                  }
+
+                  // 2. 跳轉到編輯頁面
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EditProfileScreen(
+                        currentName: auth.userProfile['name'] ?? "",
+                        currentBio: auth.userProfile['bio'] ?? "",
+                        currentAvatar: auth.userProfile['avatar'] ?? "",
+                        currentGender: auth.userProfile['gender'],
+                        currentBirthday: birthDate,
+                        currentRegion: auth.userProfile['region'],
+                      ),
+                    ),
                   );
+
+                  // 3. 如果有回傳資料，更新 Provider
+                  if (result != null && result is Map<String, dynamic>) {
+                    auth.updateProfile(
+                      name: result['name'],
+                      bio: result['bio'],
+                      avatar: result['avatar'],
+                      gender: result['gender'],
+                      birthday: result['birthday'],
+                      region: result['region'],
+                    );
+                  }
                 },
               ),
               const Divider(height: 1),
+              
+              // [核心修正] 只有在開啟電商功能時，才顯示商家模式切換
+              if (AppConfig.enableCommerce) ...[
+                SwitchListTile(
+                  secondary: const Icon(Icons.storefront, color: Colors.purple),
+                  title: const Text("商家模式"),
+                  subtitle: Text(
+                    auth.isMerchant ? "已啟用商家功能" : "切換以管理商品與預約",
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  value: auth.isMerchant,
+                  activeColor: Colors.purple,
+                  onChanged: (bool value) {
+                    auth.toggleMerchant();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(value ? "歡迎使用商家中心！請至個人頁查看。" : "已切換回個人模式"),
+                        duration: const Duration(seconds: 2),
+                      )
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+              ],
               
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),
@@ -85,7 +126,7 @@ class SettingsScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 主畫面 (核心修改)
+// 主畫面 (保持不變)
 // ---------------------------------------------------------------------------
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -101,7 +142,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _showMapView = false;
   bool _showCart = false;
 
-  // [新增] 定義導航項目結構
+  // 定義導航項目結構
   late final List<Map<String, dynamic>> _navItems;
 
   @override
@@ -151,13 +192,13 @@ class _MainScreenState extends State<MainScreen> {
       'requireAuth': false,
     };
 
-    // 3. 發文 (加上文字標籤 '發佈' 以平衡視覺高度)
+    // 3. 發文
     final createPostItem = {
       'page': const CreatePostScreen(),
       'item': const BottomNavigationBarItem(
         icon: Icon(Icons.add_circle_outline, size: 32), 
         activeIcon: Icon(Icons.add_circle, size: 32), 
-        label: '發佈' // [建議] 加上文字，讓按鈕高度跟旁邊一致
+        label: '發佈' 
       ),
       'requireAuth': true,
     };
@@ -178,10 +219,9 @@ class _MainScreenState extends State<MainScreen> {
       'requireAuth': false,
     };
 
-    // [重點設計] 根據開關決定排列順序
+    // 根據開關決定排列順序
     if (AppConfig.enableCommerce) {
       // 開啟電商：標準 5 欄位
-      // 順序：首頁 -> 市集 -> 發文 -> 聊天 -> 個人
       _navItems = [
         homeItem,
         marketItem,
@@ -191,12 +231,10 @@ class _MainScreenState extends State<MainScreen> {
       ];
     } else {
       // 關閉電商：平衡 4 欄位 (IG 風格)
-      // 順序：首頁 -> 聊天 -> 發文 -> 個人
-      // [解釋] 將「聊天」往前移，讓「發文」落在第 3 位，操作手感更好，視覺也更平衡
       _navItems = [
         homeItem,
-        chatItem,       // <--- 往前移
-        createPostItem, // <--- 變成第 3 個
+        chatItem,       
+        createPostItem, 
         profileItem,
       ];
     }
@@ -205,7 +243,7 @@ class _MainScreenState extends State<MainScreen> {
   void _onTabTapped(int index) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     
-    // [修改] 動態判斷是否需要登入，不再寫死 index
+    // 動態判斷是否需要登入
     final targetItem = _navItems[index];
     final bool requireAuth = targetItem['requireAuth'] ?? false;
 
@@ -229,7 +267,6 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // [修改] 直接從列表中取得當前頁面，不需要 switch-case，這樣順序永遠正確
     final Widget bodyContent = _navItems[_selectedIndex]['page'] as Widget;
 
     return Stack(
@@ -241,14 +278,12 @@ class _MainScreenState extends State<MainScreen> {
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: _onTabTapped,
-            type: BottomNavigationBarType.fixed, // 保持 fixed，讓 4 個按鈕平均分佈
+            type: BottomNavigationBarType.fixed, 
             backgroundColor: Colors.white,
             selectedItemColor: Colors.purple,
             unselectedItemColor: Colors.grey,
-            // [關鍵] 字體大小調整，讓排版看起來不那麼空
             selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             unselectedLabelStyle: const TextStyle(fontSize: 12),
-            // [修改] 動態產生 Items
             items: _navItems.map((e) => e['item'] as BottomNavigationBarItem).toList(),
           ),
         ),
@@ -256,13 +291,10 @@ class _MainScreenState extends State<MainScreen> {
         // --- 全域覆蓋層 (Overlays) ---
         
         // 1. 地圖覆蓋層
-        // [修正] 移除 AppConfig.enableCommerce 的限制
-        // 讓地圖功能在純社群模式下也能運作
         if (_showMapView) 
           Positioned.fill(child: MapViewOverlay(onClose: () => setState(() => _showMapView = false))),
         
         // 2. 購物車覆蓋層
-        // 購物車則維持原本判斷，只有開電商才顯示
         if (AppConfig.enableCommerce && _showCart) 
           Positioned.fill(
             child: CartOverlay(

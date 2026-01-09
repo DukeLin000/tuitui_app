@@ -31,6 +31,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         elevation: 0.5,
         leading: const BackButton(color: Colors.black), // 使用系統預設返回鍵
         titleSpacing: 0,
+        // [修改] 為了讓標題內容也符合長型排版視覺，這裡可以用 Flexible 稍微調整，但通常 AppBar 滿版即可
         title: Row(
           children: [
             const CircleAvatar(
@@ -47,81 +48,89 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert, color: Colors.black))
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                // 簡單模擬：偶數是我發的，奇數是對方的
-                final isMe = index % 2 == 0;
-                return Align(
-                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7), // 限制最大寬度
-                    decoration: BoxDecoration(
-                      color: isMe ? Colors.purple : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(20).copyWith(
-                        bottomRight: isMe ? const Radius.circular(4) : null,
-                        bottomLeft: !isMe ? const Radius.circular(4) : null,
+      
+      // [關鍵修改] 使用 Center + ConstrainedBox 限制內容最大寬度，達成 Web 版長型排版
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500), // 限制最大寬度為 500
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, index) {
+                    // 簡單模擬：偶數是我發的，奇數是對方的
+                    final isMe = index % 2 == 0;
+                    return Align(
+                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        // 這裡的 maxWidth 可以稍微調整，因為外層已經限制了 500，這裡的 0.7 是相對於 500 的
+                        constraints: BoxConstraints(maxWidth: 350), 
+                        decoration: BoxDecoration(
+                          color: isMe ? Colors.purple : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(20).copyWith(
+                            bottomRight: isMe ? const Radius.circular(4) : null,
+                            bottomLeft: !isMe ? const Radius.circular(4) : null,
+                          ),
+                        ),
+                        child: Text(
+                          _messages[index],
+                          style: TextStyle(color: isMe ? Colors.white : Colors.black87),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      _messages[index],
-                      style: TextStyle(color: isMe ? Colors.white : Colors.black87),
-                    ),
+                    );
+                  },
+                ),
+              ),
+              
+              // 底部輸入框
+              SafeArea(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white, 
+                    border: Border(top: BorderSide(color: Colors.grey[200]!))
                   ),
-                );
-              },
-            ),
+                  child: Row(
+                    children: [
+                      IconButton(onPressed: (){}, icon: const Icon(Icons.add_circle_outline, color: Colors.purple)),
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          decoration: InputDecoration(
+                            hintText: "傳送訊息...",
+                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      CircleAvatar(
+                        backgroundColor: Colors.purple,
+                        radius: 20,
+                        child: IconButton(
+                          icon: const Icon(Icons.send, color: Colors.white, size: 18),
+                          onPressed: () {
+                            if (_controller.text.isNotEmpty) {
+                              setState(() => _messages.add(_controller.text));
+                              _controller.clear();
+                            }
+                          },
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              )
+            ],
           ),
-          
-          // 底部輸入框
-          SafeArea(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white, 
-                border: Border(top: BorderSide(color: Colors.grey[200]!))
-              ),
-              child: Row(
-                children: [
-                  IconButton(onPressed: (){}, icon: const Icon(Icons.add_circle_outline, color: Colors.purple)),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: InputDecoration(
-                        hintText: "傳送訊息...",
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  CircleAvatar(
-                    backgroundColor: Colors.purple,
-                    radius: 20,
-                    child: IconButton(
-                      icon: const Icon(Icons.send, color: Colors.white, size: 18),
-                      onPressed: () {
-                        if (_controller.text.isNotEmpty) {
-                          setState(() => _messages.add(_controller.text));
-                          _controller.clear();
-                        }
-                      },
-                    ),
-                  )
-                ],
-              ),
-            ),
-          )
-        ],
+        ),
       ),
     );
   }

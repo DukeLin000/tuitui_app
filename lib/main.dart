@@ -1,9 +1,10 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart'; // [新增] 引入多語言套件
 import 'package:provider/provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/auth_provider.dart'; 
-import 'providers/post_provider.dart'; // [新增] 引入 PostProvider
+import 'providers/post_provider.dart';
 import 'screens/main/main_screen.dart';
 
 void main() {
@@ -12,7 +13,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => PostProvider()), // [新增] 註冊 PostProvider
+        ChangeNotifierProvider(create: (_) => PostProvider()),
       ],
       child: const TuituiApp(),
     ),
@@ -44,6 +45,16 @@ class TuituiApp extends StatelessWidget {
           ),
         ),
       ),
+      // [新增] 語系設定，讓 DatePicker 支援中文介面，否則會報錯
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('zh', 'TW'), // 繁體中文
+        Locale('en', 'US'), // 英文
+      ],
       home: const MainScreen(),
     );
   }
