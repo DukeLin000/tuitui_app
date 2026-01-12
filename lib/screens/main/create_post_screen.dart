@@ -1,15 +1,18 @@
 // lib/screens/main/create_post_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // [新增]
+import 'package:provider/provider.dart'; 
 import '../../widgets/responsive_container.dart';
-import '../../providers/post_provider.dart'; // [新增]
-import '../../models/post.dart'; // [新增]
+import '../../providers/post_provider.dart'; 
+import '../../models/post.dart'; 
 
 // ---------------------------------------------------------------------------
-// 第一階段：素材選擇 (Media Picker) - 保持不變
+// 第一階段：素材選擇 (Media Picker)
 // ---------------------------------------------------------------------------
 class CreatePostScreen extends StatefulWidget {
-  const CreatePostScreen({super.key});
+  // [新增] 接收來自 MainScreen 的回呼，用於切換 Tab
+  final VoidCallback? onPostSuccess;
+
+  const CreatePostScreen({super.key, this.onPostSuccess});
 
   @override
   State<CreatePostScreen> createState() => _CreatePostScreenState();
@@ -40,7 +43,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> with SingleTickerPr
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PhotoEditorScreen(imageColor: _mockGallery[_selectedIndex]),
+        builder: (context) => PhotoEditorScreen(
+          imageColor: _mockGallery[_selectedIndex],
+          // [新增] 將回呼傳遞給下一頁
+          onPostSuccess: widget.onPostSuccess,
+        ),
       ),
     );
   }
@@ -54,7 +61,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> with SingleTickerPr
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.black),
-          onPressed: () => Navigator.pop(context), // 修正：取消應該返回上一頁
+          onPressed: () => Navigator.pop(context), 
         ),
         title: const Text("最近項目", style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
         centerTitle: true,
@@ -134,18 +141,24 @@ class _CreatePostScreenState extends State<CreatePostScreen> with SingleTickerPr
 }
 
 // ---------------------------------------------------------------------------
-// 第二階段：美化與編輯 (Photo Editor) - 保持不變
+// 第二階段：美化與編輯 (Photo Editor)
 // ---------------------------------------------------------------------------
 class PhotoEditorScreen extends StatelessWidget {
   final Color imageColor;
+  // [新增] 接收回呼
+  final VoidCallback? onPostSuccess;
 
-  const PhotoEditorScreen({super.key, required this.imageColor});
+  const PhotoEditorScreen({super.key, required this.imageColor, this.onPostSuccess});
 
   void _goToPublish(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PostPublishScreen(imageColor: imageColor),
+        builder: (context) => PostPublishScreen(
+          imageColor: imageColor,
+          // [新增] 將回呼傳遞給下一頁
+          onPostSuccess: onPostSuccess,
+        ),
       ),
     );
   }
@@ -245,18 +258,20 @@ class _EditorTool extends StatelessWidget {
 // ---------------------------------------------------------------------------
 class PostPublishScreen extends StatefulWidget {
   final Color imageColor;
-  const PostPublishScreen({super.key, required this.imageColor});
+  // [新增] 接收回呼
+  final VoidCallback? onPostSuccess;
+
+  const PostPublishScreen({super.key, required this.imageColor, this.onPostSuccess});
 
   @override
   State<PostPublishScreen> createState() => _PostPublishScreenState();
 }
 
 class _PostPublishScreenState extends State<PostPublishScreen> {
-  // [新增] 文字控制器，以便獲取用戶輸入
   final TextEditingController _contentController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
 
-  // [新增] 標籤相關變數
+  // 標籤相關變數
   final List<String> _recommendTags = ["美食", "好物推薦", "型男穿搭", "週末去哪玩", "約會聖地", "高CP值"];
   final List<String> _selectedTags = [];
 
@@ -267,7 +282,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
     super.dispose();
   }
 
-  // [新增] 顯示新增標籤的對話框
+  // 顯示新增標籤的對話框
   void _showAddTagDialog() {
     String newTag = "";
     showDialog(
@@ -289,8 +304,8 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
               onPressed: () {
                 if (newTag.isNotEmpty && !_recommendTags.contains(newTag)) {
                   setState(() {
-                    _recommendTags.add(newTag); // 加入選項列表
-                    _selectedTags.add(newTag);  // 自動選中
+                    _recommendTags.add(newTag); 
+                    _selectedTags.add(newTag);  
                   });
                 } else if (_recommendTags.contains(newTag) && !_selectedTags.contains(newTag)) {
                    setState(() {
@@ -307,7 +322,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
     );
   }
 
-  // [新增] 提交發布方法
+  // 提交發布方法
   void _submitPost() {
     if (_titleController.text.isEmpty && _contentController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("請至少輸入標題或內容")));
@@ -316,23 +331,20 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
 
     // 1. 建立新貼文物件
     final newPost = Post(
-      id: DateTime.now().millisecondsSinceEpoch.toString(), // 產生唯一 ID
-      authorName: '我 (Me)', // 這裡暫時寫死，之後接 AuthProvider
-      authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100', // 預設頭像
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      authorName: '我 (Me)', 
+      authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100', 
       verified: false,
-      // 這裡先只存標題+內容，實際專案可能分開存
       content: "${_titleController.text}\n${_contentController.text}", 
-      // 由於我們選的是顏色，這裡用假圖代替，實際專案會上傳圖片取得 URL
       image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800', 
       likes: 0,
       comments: 0,
       timestamp: '剛剛',
       isMerchant: false,
-      tags: _selectedTags, // [新增] 傳入選中的標籤
+      tags: _selectedTags, // 傳入選中的標籤
     );
 
     // 2. 呼叫 Provider 新增貼文
-    // listen: false 是因為我們只是呼叫方法，不需要監聽變化重繪此頁面
     Provider.of<PostProvider>(context, listen: false).addPost(newPost);
 
     // 3. 提示並返回首頁
@@ -340,6 +352,9 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
     
     // popUntil 回到最上層 (首頁)
     Navigator.of(context).popUntil((route) => route.isFirst);
+
+    // [新增] 呼叫回呼，通知 MainScreen 切換 Tab
+    widget.onPostSuccess?.call();
   }
 
   Future<bool> _onWillPop() async {
@@ -385,7 +400,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
               child: ElevatedButton(
-                onPressed: _submitPost, // [修改] 綁定提交方法
+                onPressed: _submitPost, 
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF1744), shape: const StadiumBorder(), elevation: 0),
                 child: const Text("發布", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
@@ -409,7 +424,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: TextField(
-                        controller: _titleController, // [新增]
+                        controller: _titleController,
                         maxLength: 20, maxLines: 3,
                         decoration: const InputDecoration(
                           hintText: "填寫標題 會吸引更多人喔～",
@@ -423,7 +438,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
                 ),
                 const Divider(height: 30),
                 TextField(
-                  controller: _contentController, // [新增]
+                  controller: _contentController,
                   maxLength: 1000, maxLines: 8,
                   decoration: const InputDecoration(
                     hintText: "添加正文\n#話題 #穿搭",
@@ -433,14 +448,12 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
                 ),
                 const SizedBox(height: 20),
                 
-                // [新增] 標籤選擇區標題
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 4.0),
                   child: Text("選擇標籤", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54)),
                 ),
                 const SizedBox(height: 8),
 
-                // [新增] 標籤選擇器 Wrap
                 Wrap(
                   spacing: 8.0, 
                   runSpacing: 4.0, 
@@ -458,7 +471,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
                       ),
                       backgroundColor: Colors.grey[100],
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
-                      showCheckmark: false, // 簡潔風格不顯示勾勾
+                      showCheckmark: false,
                       onSelected: (bool selected) {
                         setState(() {
                           if (selected) {
@@ -478,7 +491,6 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      // [新增] 自訂標籤按鈕
                       ActionChip(
                         avatar: const Icon(Icons.add, size: 16, color: Colors.black87),
                         label: const Text("自訂標籤", style: TextStyle(fontSize: 13, color: Colors.black87)),
@@ -487,7 +499,6 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
                         onPressed: _showAddTagDialog,
                       ),
                       const SizedBox(width: 8),
-                      // 原有的功能按鈕
                       const _ActionChip(icon: Icons.alternate_email, label: "提及用戶"),
                       const SizedBox(width: 8),
                       const _ActionChip(icon: Icons.location_on_outlined, label: "添加地點"),

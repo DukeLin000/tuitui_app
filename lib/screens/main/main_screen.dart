@@ -193,8 +193,16 @@ class _MainScreenState extends State<MainScreen> {
     };
 
     // 3. 發文
+    // [修改] 這裡傳入回呼函式，讓發文成功後可以切換回首頁
     final createPostItem = {
-      'page': const CreatePostScreen(),
+      'page': CreatePostScreen(
+        onPostSuccess: () {
+          // 當發文流程全部結束且成功時，切換 Tab 回到首頁 (index 0)
+          setState(() {
+            _selectedIndex = 0;
+          });
+        },
+      ),
       'item': const BottomNavigationBarItem(
         icon: Icon(Icons.add_circle_outline, size: 32), 
         activeIcon: Icon(Icons.add_circle, size: 32), 
