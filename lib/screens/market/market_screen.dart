@@ -89,7 +89,6 @@ class _MarketScreenState extends State<MarketScreen> {
     required IconData? icon, 
     required Color iconColor, 
     required Color bgColor, 
-    String? id, 
   }) {
     if (icon == null) return const SizedBox(width: 48);
     return GestureDetector(

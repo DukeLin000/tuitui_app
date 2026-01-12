@@ -228,8 +228,8 @@ class _MapViewOverlayState extends State<MapViewOverlay> {
             child: FloatingActionButton(
               backgroundColor: Colors.white,
               foregroundColor: Colors.purple,
-              child: const Icon(Icons.my_location),
               onPressed: _locateUser,
+              child: const Icon(Icons.my_location),
             ),
           ),
 

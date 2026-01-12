@@ -95,7 +95,7 @@ class SettingsScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                   value: auth.isMerchant,
-                  activeColor: Colors.purple,
+                  activeThumbColor: Colors.purple,
                   onChanged: (bool value) {
                     auth.toggleMerchant();
                     ScaffoldMessenger.of(context).showSnackBar(

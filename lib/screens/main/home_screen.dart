@@ -1,9 +1,7 @@
 // lib/screens/main/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; 
-import '../../models/post.dart';
 import '../../widgets/post_card.dart';
-import '../../models/waterfall_item.dart';
 import '../../widgets/waterfall_feed.dart';
 import '../../widgets/responsive_container.dart';
 import '../../providers/post_provider.dart'; 

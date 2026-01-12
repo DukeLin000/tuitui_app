@@ -241,7 +241,7 @@ class _EditorTool extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 第三階段：發布設定 (Publish Form) - 新增 Provider 連接
+// 第三階段：發布設定 (Publish Form) - 新增 Provider 連接與標籤功能
 // ---------------------------------------------------------------------------
 class PostPublishScreen extends StatefulWidget {
   final Color imageColor;
@@ -256,11 +256,55 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
   final TextEditingController _contentController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
 
+  // [新增] 標籤相關變數
+  final List<String> _recommendTags = ["美食", "好物推薦", "型男穿搭", "週末去哪玩", "約會聖地", "高CP值"];
+  final List<String> _selectedTags = [];
+
   @override
   void dispose() {
     _contentController.dispose();
     _titleController.dispose();
     super.dispose();
+  }
+
+  // [新增] 顯示新增標籤的對話框
+  void _showAddTagDialog() {
+    String newTag = "";
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("新增標籤"),
+          content: TextField(
+            autofocus: true,
+            decoration: const InputDecoration(hintText: "輸入標籤名稱 (例如: 咖啡廳)"),
+            onChanged: (value) => newTag = value,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("取消"),
+            ),
+            TextButton(
+              onPressed: () {
+                if (newTag.isNotEmpty && !_recommendTags.contains(newTag)) {
+                  setState(() {
+                    _recommendTags.add(newTag); // 加入選項列表
+                    _selectedTags.add(newTag);  // 自動選中
+                  });
+                } else if (_recommendTags.contains(newTag) && !_selectedTags.contains(newTag)) {
+                   setState(() {
+                    _selectedTags.add(newTag);
+                  });
+                }
+                Navigator.pop(context);
+              },
+              child: const Text("加入"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // [新增] 提交發布方法
@@ -284,6 +328,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
       comments: 0,
       timestamp: '剛剛',
       isMerchant: false,
+      tags: _selectedTags, // [新增] 傳入選中的標籤
     );
 
     // 2. 呼叫 Provider 新增貼文
@@ -386,15 +431,64 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
                     border: InputBorder.none,
                   ),
                 ),
-                const SizedBox(height: 10),
-                // (其餘 Chip 代碼保持不變...)
+                const SizedBox(height: 20),
+                
+                // [新增] 標籤選擇區標題
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Text("選擇標籤", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54)),
+                ),
+                const SizedBox(height: 8),
+
+                // [新增] 標籤選擇器 Wrap
+                Wrap(
+                  spacing: 8.0, 
+                  runSpacing: 4.0, 
+                  children: _recommendTags.map((tag) {
+                    final isSelected = _selectedTags.contains(tag);
+                    return FilterChip(
+                      label: Text("#$tag"),
+                      selected: isSelected,
+                      selectedColor: Colors.redAccent.withOpacity(0.1),
+                      checkmarkColor: Colors.redAccent,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.redAccent : Colors.black87,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 12,
+                      ),
+                      backgroundColor: Colors.grey[100],
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
+                      showCheckmark: false, // 簡潔風格不顯示勾勾
+                      onSelected: (bool selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedTags.add(tag);
+                          } else {
+                            _selectedTags.remove(tag);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 20),
+                
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      const _ActionChip(icon: Icons.grid_3x3, label: "話題"),
+                      // [新增] 自訂標籤按鈕
+                      ActionChip(
+                        avatar: const Icon(Icons.add, size: 16, color: Colors.black87),
+                        label: const Text("自訂標籤", style: TextStyle(fontSize: 13, color: Colors.black87)),
+                        backgroundColor: Colors.grey[100],
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
+                        onPressed: _showAddTagDialog,
+                      ),
                       const SizedBox(width: 8),
-                      const _ActionChip(icon: Icons.alternate_email, label: "用戶"),
+                      // 原有的功能按鈕
+                      const _ActionChip(icon: Icons.alternate_email, label: "提及用戶"),
                       const SizedBox(width: 8),
                       const _ActionChip(icon: Icons.location_on_outlined, label: "添加地點"),
                     ],

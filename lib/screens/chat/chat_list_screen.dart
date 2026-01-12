@@ -8,7 +8,7 @@ class ChatListScreen extends StatelessWidget {
 
   // 1. 準備假資料
   static const List<ChatThread> _mockThreads = [
-    const ChatThread(
+    ChatThread(
       id: '1',
       userName: '推推官方小幫手',
       userAvatar: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=100', // 官方圖標
@@ -17,7 +17,7 @@ class ChatListScreen extends StatelessWidget {
       unreadCount: 1,
       isOfficial: true,
     ),
-    const ChatThread(
+    ChatThread(
       id: '2',
       userName: '時尚達人 Amy',
       userAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100',
@@ -25,7 +25,7 @@ class ChatListScreen extends StatelessWidget {
       time: '10:23',
       unreadCount: 3,
     ),
-    const ChatThread(
+    ChatThread(
       id: '3',
       userName: '美食探險家小雅',
       userAvatar: 'https://images.unsplash.com/photo-1589553009868-c7b2bb474531?w=100',
@@ -33,7 +33,7 @@ class ChatListScreen extends StatelessWidget {
       time: '昨天',
       unreadCount: 0,
     ),
-    const ChatThread(
+    ChatThread(
       id: '4',
       userName: '攝影師 Jack',
       userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
