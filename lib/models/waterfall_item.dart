@@ -3,6 +3,8 @@ import 'cart_item.dart';
 
 class WaterfallItem {
   final String id;
+  // 👇 [新增] 加入 userId 以便在個人頁面進行過濾
+  final String userId; 
   final String image;
   final String title;
   final String authorName;
@@ -17,6 +19,8 @@ class WaterfallItem {
 
   const WaterfallItem({
     required this.id,
+    // 👇 [新增] 建構子加入 userId，並給預設值以防萬一
+    this.userId = '', 
     required this.image,
     required this.title,
     required this.authorName,

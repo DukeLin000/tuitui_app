@@ -3,6 +3,8 @@ import 'waterfall_item.dart';
 
 class Post {
   final String id;
+  // 👇 [新增] 儲存作者 ID (UUID)，用於辨識是否為自己的貼文
+  final String userId;
   final String authorName;
   final String authorAvatar;
   final bool verified;
@@ -21,6 +23,8 @@ class Post {
 
   const Post({
     required this.id,
+    // 👇 [新增] 建構子加入 userId
+    required this.userId,
     required this.authorName,
     required this.authorAvatar,
     this.verified = false,
@@ -53,13 +57,35 @@ class Post {
       parsedTags = List<String>.from(json['tags']);
     }
 
+    // 3. [修正邏輯] 解析作者資訊 (優先使用 user 物件中的資料)
+    String parsedAuthorName = '匿名用戶';
+    String parsedAuthorAvatar = 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100';
+    // 👇 [新增] 解析 userId
+    String parsedUserId = '';
+
+    if (json['user'] != null) {
+      parsedAuthorName = json['user']['nickname'] ?? parsedAuthorName;
+      parsedAuthorAvatar = json['user']['avatarUrl'] ?? parsedAuthorAvatar;
+      // 👇 從 user 物件拿 ID (轉字串以防萬一)
+      if (json['user']['id'] != null) {
+        parsedUserId = json['user']['id'].toString();
+      }
+    } else if (json['userId'] != null) {
+      // 降級處理：如果沒有 user 物件但有 userId
+      parsedAuthorName = json['userId'].toString();
+      // 👇 從根目錄拿 ID
+      parsedUserId = json['userId'].toString();
+    }
+
     return Post(
       // [原有邏輯] ID 轉 String
       id: json['id'].toString(),
-      // [原有邏輯] userId 當名字
-      authorName: json['userId'] ?? '匿名用戶',
-      // [原有邏輯] 預設頭像
-      authorAvatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100',
+      // 👇 [新增] 帶入解析好的 userId
+      userId: parsedUserId,
+      // [修正邏輯] 使用解析後的真實暱稱
+      authorName: parsedAuthorName,
+      // [修正邏輯] 使用解析後的真實頭像
+      authorAvatar: parsedAuthorAvatar,
       verified: false,
       content: json['content'] ?? '',
       image: coverImage,
@@ -75,6 +101,8 @@ class Post {
   // [原有] copyWith 方法保持不變，但加入 tags 支援
   Post copyWith({
     String? id,
+    // 👇 [新增] copyWith 支援修改 userId
+    String? userId,
     String? authorName,
     String? authorAvatar,
     bool? verified,
@@ -90,6 +118,8 @@ class Post {
   }) {
     return Post(
       id: id ?? this.id,
+      // 👇 [新增] 如果沒傳入新 userId，就用舊的
+      userId: userId ?? this.userId,
       authorName: authorName ?? this.authorName,
       authorAvatar: authorAvatar ?? this.authorAvatar,
       verified: verified ?? this.verified,
@@ -111,6 +141,8 @@ class Post {
     final double randomRatio = (id.hashCode % 5 + 10) / 10.0;
     return WaterfallItem(
       id: id,
+      // 👇 [關鍵修正] 這裡必須傳入 userId，WaterfallItem 才能正確記錄作者
+      userId: userId,
       image: image,
       title: content,
       authorName: authorName,

@@ -435,9 +435,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     builder: (context, postProvider, child) {
                       final myPosts = postProvider.discoveryItems.where((item) {
                         if (isMe) {
-                          return item.authorName == '我 (Me)' || item.authorName == 'Me';
+                          // 👇 [核心修正] 改用 ID 比對 (確保 post.dart 已新增 userId)
+                          final currentUserId = context.read<AuthProvider>().userProfile['id']?.toString();
+                          return item.userId == currentUserId;
                         } else {
-                          return item.authorName == widget.userName || item.authorName == widget.userId;
+                          // 看別人的時候，比對貼文者 ID 是否等於 該頁面的 userId
+                          return item.userId == widget.userId;
                         }
                       }).toList();
 
