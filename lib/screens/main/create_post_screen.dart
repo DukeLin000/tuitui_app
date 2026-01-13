@@ -1,15 +1,17 @@
 // lib/screens/main/create_post_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; 
+import 'package:provider/provider.dart';
 import '../../widgets/responsive_container.dart';
-import '../../providers/post_provider.dart'; 
-import '../../models/post.dart'; 
+import '../../providers/post_provider.dart';
+import '../../models/post.dart';
+import '../../services/api_service.dart'; // [新增] 引入 API 服務
+import '../../providers/auth_provider.dart'; // [新增] 引入 AuthProvider 以取得 UserID
 
 // ---------------------------------------------------------------------------
 // 第一階段：素材選擇 (Media Picker)
 // ---------------------------------------------------------------------------
 class CreatePostScreen extends StatefulWidget {
-  // [新增] 接收來自 MainScreen 的回呼，用於切換 Tab
+  // 接收來自 MainScreen 的回呼，用於切換 Tab
   final VoidCallback? onPostSuccess;
 
   const CreatePostScreen({super.key, this.onPostSuccess});
@@ -45,7 +47,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> with SingleTickerPr
       MaterialPageRoute(
         builder: (context) => PhotoEditorScreen(
           imageColor: _mockGallery[_selectedIndex],
-          // [新增] 將回呼傳遞給下一頁
+          // 將回呼傳遞給下一頁
           onPostSuccess: widget.onPostSuccess,
         ),
       ),
@@ -61,7 +63,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> with SingleTickerPr
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.black),
-          onPressed: () => Navigator.pop(context), 
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text("最近項目", style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
         centerTitle: true,
@@ -80,9 +82,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> with SingleTickerPr
               child: Container(
                 width: double.infinity,
                 color: Colors.grey[100],
-                child: _selectedIndex != -1 
-                  ? Container(color: _mockGallery[_selectedIndex], child: const Center(child: Text("預覽圖片", style: TextStyle(color: Colors.white))))
-                  : const Center(child: Icon(Icons.camera_alt, color: Colors.grey, size: 64)),
+                child: _selectedIndex != -1
+                    ? Container(color: _mockGallery[_selectedIndex], child: const Center(child: Text("預覽圖片", style: TextStyle(color: Colors.white))))
+                    : const Center(child: Icon(Icons.camera_alt, color: Colors.grey, size: 64)),
               ),
             ),
             Expanded(
@@ -110,9 +112,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> with SingleTickerPr
                           onTap: () => setState(() => _selectedIndex = index),
                           child: Container(
                             color: _mockGallery[index],
-                            child: _selectedIndex == index 
-                              ? Container(color: Colors.black54, child: const Icon(Icons.check, color: Colors.white))
-                              : null,
+                            child: _selectedIndex == index
+                                ? Container(color: Colors.black54, child: const Icon(Icons.check, color: Colors.white))
+                                : null,
                           ),
                         );
                       },
@@ -145,7 +147,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> with SingleTickerPr
 // ---------------------------------------------------------------------------
 class PhotoEditorScreen extends StatelessWidget {
   final Color imageColor;
-  // [新增] 接收回呼
+  // 接收回呼
   final VoidCallback? onPostSuccess;
 
   const PhotoEditorScreen({super.key, required this.imageColor, this.onPostSuccess});
@@ -156,7 +158,7 @@ class PhotoEditorScreen extends StatelessWidget {
       MaterialPageRoute(
         builder: (context) => PostPublishScreen(
           imageColor: imageColor,
-          // [新增] 將回呼傳遞給下一頁
+          // 將回呼傳遞給下一頁
           onPostSuccess: onPostSuccess,
         ),
       ),
@@ -254,11 +256,11 @@ class _EditorTool extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 第三階段：發布設定 (Publish Form) - 新增 Provider 連接與標籤功能
+// 第三階段：發布設定 (Publish Form) - 已修正為串接後端 API
 // ---------------------------------------------------------------------------
 class PostPublishScreen extends StatefulWidget {
   final Color imageColor;
-  // [新增] 接收回呼
+  // 接收回呼
   final VoidCallback? onPostSuccess;
 
   const PostPublishScreen({super.key, required this.imageColor, this.onPostSuccess});
@@ -304,11 +306,11 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
               onPressed: () {
                 if (newTag.isNotEmpty && !_recommendTags.contains(newTag)) {
                   setState(() {
-                    _recommendTags.add(newTag); 
-                    _selectedTags.add(newTag);  
+                    _recommendTags.add(newTag);
+                    _selectedTags.add(newTag);
                   });
                 } else if (_recommendTags.contains(newTag) && !_selectedTags.contains(newTag)) {
-                   setState(() {
+                  setState(() {
                     _selectedTags.add(newTag);
                   });
                 }
@@ -322,39 +324,57 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
     );
   }
 
-  // 提交發布方法
-  void _submitPost() {
+  // 🔴 [修改重點] 提交發布方法：改為串接真實後端 API
+  Future<void> _submitPost() async {
+    // 1. 檢查輸入
     if (_titleController.text.isEmpty && _contentController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("請至少輸入標題或內容")));
       return;
     }
 
-    // 1. 建立新貼文物件
-    final newPost = Post(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      authorName: '我 (Me)', 
-      authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100', 
-      verified: false,
-      content: "${_titleController.text}\n${_contentController.text}", 
-      image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800', 
-      likes: 0,
-      comments: 0,
-      timestamp: '剛剛',
-      isMerchant: false,
-      tags: _selectedTags, // 傳入選中的標籤
-    );
-
-    // 2. 呼叫 Provider 新增貼文
-    Provider.of<PostProvider>(context, listen: false).addPost(newPost);
-
-    // 3. 提示並返回首頁
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("發布成功！")));
+    // 2. 取得 AuthProvider (為了拿 userId)
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    // popUntil 回到最上層 (首頁)
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    // 3. 取得真正的 User ID (後端資料庫的 ID)
+    final userId = authProvider.userProfile['id']?.toString();
 
-    // [新增] 呼叫回呼，通知 MainScreen 切換 Tab
-    widget.onPostSuccess?.call();
+    // 除錯日誌：檢查抓到的 ID 是否為 null
+    print("DEBUG: 發布貼文，目前 User ID = $userId");
+
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("錯誤：找不到用戶ID，請重新登入")));
+      return;
+    }
+
+    // 顯示 Loading 提示
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("正在發布...")));
+
+    try {
+      // 4. 準備發送內容 (標題 + 內文)
+      final fullContent = "${_titleController.text}\n${_contentController.text}";
+
+      // 5. 呼叫 ApiService
+      final success = await ApiService.createPost(userId, fullContent);
+
+      // 移除 Loading SnackBar
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("發布成功！")));
+
+        // 6. 回到首頁 (移除所有上方頁面)
+        Navigator.of(context).popUntil((route) => route.isFirst);
+
+        // 7. 通知主頁面刷新列表
+        widget.onPostSuccess?.call();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("發布失敗，請稍後再試")));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      print("Post Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("發生錯誤: $e")));
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -400,7 +420,8 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
               child: ElevatedButton(
-                onPressed: _submitPost, 
+                // 連結新的提交方法
+                onPressed: _submitPost,
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF1744), shape: const StadiumBorder(), elevation: 0),
                 child: const Text("發布", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
@@ -447,7 +468,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 4.0),
                   child: Text("選擇標籤", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54)),
@@ -455,8 +476,8 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
                 const SizedBox(height: 8),
 
                 Wrap(
-                  spacing: 8.0, 
-                  runSpacing: 4.0, 
+                  spacing: 8.0,
+                  runSpacing: 4.0,
                   children: _recommendTags.map((tag) {
                     final isSelected = _selectedTags.contains(tag);
                     return FilterChip(
@@ -486,7 +507,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
                 ),
 
                 const SizedBox(height: 20),
-                
+
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -548,9 +569,9 @@ class _OptionTile extends StatelessWidget {
           const SizedBox(width: 12),
           Text(title, style: const TextStyle(fontSize: 15)),
           const Spacer(),
-          if (isSwitch) 
+          if (isSwitch)
             const SizedBox(height: 24, width: 40, child: Switch(value: true, onChanged: null, activeColor: Colors.redAccent))
-          else 
+          else
             Row(children: [Text(value, style: const TextStyle(fontSize: 13, color: Colors.grey)), const Icon(Icons.chevron_right, color: Colors.grey, size: 20)]),
         ],
       ),

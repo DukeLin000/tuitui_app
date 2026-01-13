@@ -1,11 +1,13 @@
 // lib/providers/auth_provider.dart
 import 'package:flutter/foundation.dart';
+import '../services/api_service.dart'; // 1. 引入 ApiService
 
 class AuthProvider extends ChangeNotifier {
   bool _isLoggedIn = false;
   bool _isMerchant = false; // 商家身分狀態
 
   // [修改] 改為 dynamic 以支援 DateTime (生日) 等非字串資料
+  // 這裡保留預設值，當後端回傳資料後會被覆蓋
   final Map<String, dynamic> _userProfile = {
     'name': '推推用戶',
     'bio': '歡迎來到我的試衣間 ✨ 分享日常穿搭與美好生活',
@@ -23,38 +25,59 @@ class AuthProvider extends ChangeNotifier {
   // [修改] 回傳 dynamic Map
   Map<String, dynamic> get userProfile => _userProfile; 
 
-  // [修改] 執行登入
+  // [修改] 執行登入 (串接後端)
   Future<bool> login(String email, String password) async {
-    await Future.delayed(const Duration(seconds: 1));
+    // 呼叫 ApiService 的登入方法
+    final userData = await ApiService.login(email, password);
     
-    if (email.isNotEmpty && password.isNotEmpty) {
+    if (userData != null) {
       _isLoggedIn = true;
-      _userProfile['email'] = email; 
+      
+      // 將後端回傳的資料 (id, name, avatar, bio, role...) 更新到本地 profile
+      _userProfile.addAll(userData);
+      
+      // 同步商家狀態 (根據後端回傳的 role 判斷)
+      if (userData.containsKey('role')) {
+        _isMerchant = (userData['role'] == 'merchant');
+      }
+
       notifyListeners();
-      return true;
+      return true; // 登入成功
     }
-    return false;
+    
+    return false; // 登入失敗
   }
 
-  // [新增] 註冊帳號
+  // [新增] 註冊帳號 (串接後端)
   Future<bool> signUp(String email, String password, String name) async {
-    await Future.delayed(const Duration(seconds: 1));
+    // 呼叫 ApiService 的註冊方法
+    final userData = await ApiService.register(name, email, password);
     
-    _isLoggedIn = true;
-    _userProfile['email'] = email;
-    _userProfile['name'] = name;
+    if (userData != null) {
+      _isLoggedIn = true;
+      
+      // 將後端回傳的新用戶資料更新到本地
+      _userProfile.addAll(userData);
+      
+      // 新註冊用戶預設通常是 user，但以防萬一還是檢查一下
+      if (userData.containsKey('role')) {
+        _isMerchant = (userData['role'] == 'merchant');
+      }
+      
+      notifyListeners();
+      return true; // 註冊成功
+    }
     
-    notifyListeners();
-    return true;
+    return false; // 註冊失敗
   }
 
-  // [新增] 忘記密碼
+  // [新增] 忘記密碼 (暫時保留模擬，因為後端尚未實作寄信功能)
   Future<void> resetPassword(String email) async {
     await Future.delayed(const Duration(seconds: 1));
     debugPrint("重設密碼信件已發送至: $email");
   }
 
-  // [修改] 更新個人資料 (擴充支援性別、生日、地區)
+  // [修改] 更新個人資料 (暫時保留模擬，因為後端 Update API 尚未開發)
   Future<void> updateProfile({
     String? name, 
     String? bio, 
@@ -82,6 +105,10 @@ class AuthProvider extends ChangeNotifier {
   void logout() {
     _isLoggedIn = false;
     _isMerchant = false; // 登出時重置商家狀態
+    
+    // 可選：登出時是否要清空個人資料回到預設值？
+    // 目前保留不變，下次登入會被新資料覆蓋
+    
     notifyListeners();
   }
 

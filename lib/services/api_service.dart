@@ -1,25 +1,88 @@
 // lib/services/api_service.dart
 import 'dart:convert';
+import 'package:flutter/foundation.dart'; // [新增] 用於判斷平台 (kIsWeb)
 import 'package:http/http.dart' as http;
 import '../models/post.dart';
-import '../models/cart_item.dart'; // 記得引入 CartItem
+import '../models/cart_item.dart';
 
 class ApiService {
-  // 💡 設定連線網址
-  // Android 模擬器請用 'http://10.0.2.2:8080/api'
-  // iOS 模擬器或電腦瀏覽器請用 'http://localhost:8080/api'
-  // 實機測試請用電腦的區網 IP，例如 'http://192.168.1.100:8080/api'
-  static const String baseUrl = 'http://10.0.2.2:8080/api'; 
+  // 💡 [修改] 自動判斷連線網址
+  // 透過 getter 動態回傳適合當前平台的 IP
+  static String get baseUrl {
+    if (kIsWeb) {
+      // Web 瀏覽器: 使用 localhost
+      return 'http://localhost:8080/api';
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
+      // Android 模擬器: 使用 10.0.2.2
+      return 'http://10.0.2.2:8080/api';
+    } else {
+      // iOS 模擬器或電腦版 App: 使用 localhost
+      return 'http://localhost:8080/api';
+    }
+  }
+
+  // ==========================================
+  // 🔐 會員驗證 (Auth) 相關 API
+  // ==========================================
+
+  // 1. 登入 (POST /api/auth/login)
+  static Future<Map<String, dynamic>?> login(String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/login'), // 對應後端 UserController
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // 登入成功，回傳後端的 User DTO
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        print('Login Failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Login Network Error: $e');
+      return null;
+    }
+  }
+
+  // 2. 註冊 (POST /api/auth/register)
+  static Future<Map<String, dynamic>?> register(String name, String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/register'), // 對應後端 UserController
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,       // 對應後端的 payload.get("name")
+          'email': email,     // 對應後端的 payload.get("email")
+          'password': password, // 對應後端的 payload.get("password")
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print('Register Success');
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        print('Register Failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Register Network Error: $e');
+      return null;
+    }
+  }
 
   // ==========================================
   // 📌 貼文 (Social) 相關 API
   // ==========================================
 
-  // 1. 取得貼文列表 (GET /api/posts)
   static Future<List<Post>> fetchPosts() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/posts'));
-      
       if (response.statusCode == 200) {
         // 解決中文亂碼: utf8.decode
         final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -34,7 +97,6 @@ class ApiService {
     }
   }
 
-  // 2. 發布貼文 (POST /api/posts)
   static Future<bool> createPost(String userId, String content) async {
     try {
       final response = await http.post(
@@ -43,7 +105,6 @@ class ApiService {
         body: jsonEncode({
           'userId': userId,
           'content': content,
-          // 暫時不傳圖片，後端 MVP 還沒處理圖片上傳
         }),
       );
       return response.statusCode == 200;
@@ -57,14 +118,11 @@ class ApiService {
   // 🛒 購物車 (Commerce) 相關 API
   // ==========================================
 
-  // 3. 取得購物車內容 (GET /api/commerce/cart/{userId})
   static Future<List<CartItem>> fetchCart(String userId) async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/commerce/cart/$userId'));
-      
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        // 後端回傳格式: { "items": [...], "totalAmount": ... }
         if (data['items'] != null) {
           final List<dynamic> itemsJson = data['items'];
           return itemsJson.map((json) => CartItem.fromJson(json)).toList();
@@ -77,7 +135,6 @@ class ApiService {
     }
   }
 
-  // 4. 加入購物車 (POST /api/commerce/cart)
   static Future<bool> addToCart(String userId, String productId, int quantity) async {
     try {
       final response = await http.post(
