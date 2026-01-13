@@ -36,7 +36,7 @@ class PostProvider extends ChangeNotifier {
     return _items.map((post) => post.toWaterfallItem()).toList();
   }
 
-  // 4. 發布貼文 (修改為非同步，呼叫後端)
+  // 4. [原有] 發布貼文 (保留舊方法，但建議改用下面的 createPost)
   Future<void> addPost(Post post) async {
     // 呼叫後端 API 建立貼文
     // 注意：這裡假設 post.authorName 為 userId，因為後端目前是用 userId 關聯
@@ -48,6 +48,34 @@ class PostProvider extends ChangeNotifier {
     } else {
       print("發布貼文失敗");
       // 這裡可以加入錯誤處理邏輯，例如顯示 SnackBar
+    }
+  }
+
+  // 4.1 [新增] 建立貼文 (支援 UI 直接回傳成功與否)
+  // 這是一個更完整的發布流程，包含 loading 狀態管理與列表刷新
+  Future<bool> createPost(String userId, String content) async {
+    isLoading = true;
+    notifyListeners(); // 讓 UI 顯示 Loading
+
+    try {
+      // 1. 呼叫後端 API
+      final success = await ApiService.createPost(userId, content);
+      
+      if (success) {
+        // 2. 如果成功，立刻重新抓取最新列表
+        // 這樣首頁和個人頁面就會自動顯示這篇新文章
+        await fetchPosts(); 
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      print("Create post error: $e");
+      return false;
+    } finally {
+      // 確保最後關閉 Loading 狀態 (fetchPosts 內部也會關，但這裡雙重保險)
+      isLoading = false;
+      notifyListeners();
     }
   }
 

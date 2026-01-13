@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../widgets/responsive_container.dart';
 import '../../providers/post_provider.dart';
 import '../../models/post.dart';
-import '../../services/api_service.dart'; // [新增] 引入 API 服務
+import '../../services/api_service.dart'; // 保留引用以防其他地方需要，但主要邏輯移至 Provider
 import '../../providers/auth_provider.dart'; // [新增] 引入 AuthProvider 以取得 UserID
 
 // ---------------------------------------------------------------------------
@@ -324,7 +324,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
     );
   }
 
-  // 🔴 [修改重點] 提交發布方法：改為串接真實後端 API
+  // 🔴 [修改重點] 提交發布方法：改為串接真實後端 API，並使用 Provider 自動刷新
   Future<void> _submitPost() async {
     // 1. 檢查輸入
     if (_titleController.text.isEmpty && _contentController.text.isEmpty) {
@@ -353,8 +353,9 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
       // 4. 準備發送內容 (標題 + 內文)
       final fullContent = "${_titleController.text}\n${_contentController.text}";
 
-      // 5. 呼叫 ApiService
-      final success = await ApiService.createPost(userId, fullContent);
+      // 5. [關鍵修改] 呼叫 PostProvider.createPost
+      // 這會處理 API 呼叫，並在成功後自動刷新列表
+      final success = await context.read<PostProvider>().createPost(userId, fullContent);
 
       // 移除 Loading SnackBar
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -365,7 +366,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
         // 6. 回到首頁 (移除所有上方頁面)
         Navigator.of(context).popUntil((route) => route.isFirst);
 
-        // 7. 通知主頁面刷新列表
+        // 7. 通知主頁面刷新列表 (雖然 createPost 已經刷了，但如果要切換 Tab 還是需要這個)
         widget.onPostSuccess?.call();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("發布失敗，請稍後再試")));
