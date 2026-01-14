@@ -1,4 +1,3 @@
-// lib/screens/profile/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -33,7 +32,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   // [修正] 不再手動維護 _bio，改為直接使用 AuthProvider 的數據，避免狀態不同步
-  // String _bio = "..."; 
   bool _isFollowing = false; 
 
   // --- [新增功能] 1. QR Code 彈窗 ---
@@ -78,6 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // --- [新增功能] 2. 分享功能 ---
   void _onShareTap(BuildContext context) {
+    // 這裡未來可以串接 share_plus 套件
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("已呼叫系統分享 (模擬): https://tuitui.app/u/profile"),
@@ -131,31 +130,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       },
     );
-  }
-
-  // 編輯資料：傳入當前 Bio (雖然這裡用不到了，但保留輔助函式以免未來需要)
-  void _navigateToEditProfile(String currentName, String currentBio, String currentAvatar) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditProfileScreen(
-          currentName: currentName,
-          currentBio: currentBio,
-          currentAvatar: currentAvatar,
-        ),
-      ),
-    );
-
-    if (result != null && result is Map<String, dynamic>) {
-      // 更新 AuthProvider
-      if (mounted) {
-        context.read<AuthProvider>().updateProfile(
-          name: result['name'],
-          bio: result['bio'],
-          avatar: result['avatar'],
-        );
-      }
-    }
   }
 
   void _navigateToMerchantCenter() {
@@ -254,7 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? (auth.userProfile['avatar'] ?? "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100")
         : (widget.userAvatar ?? "https://via.placeholder.com/150");
 
-    // [修正] 改為讀取 AuthProvider 的 bio，而非本地變數
+    // [修正] 改為讀取 AuthProvider 的 bio
     final String displayBio = isMe
         ? (auth.userProfile['bio'] ?? "歡迎來到我的試衣間 ✨ 分享日常穿搭與美好生活")
         : "這個人很懶，什麼都沒寫";
@@ -326,7 +300,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            // [修正] 改為使用變數，而非寫死
+                            // [修正] 改為使用變數
                             _ProfileStatItem(count: followingCount, label: "Following"),
                             _ProfileStatItem(count: followersCount, label: "Followers"),
                             _ProfileStatItem(count: likeCount, label: "Like & Save"),
@@ -370,7 +344,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 12),
 
                       if (isMerchant) ...[
-                        // [核心修正] 移除 icon 參數
                         _buildMenuRow(
                           title: "商家中心",
                           subtitle: "管理商品與營收",
@@ -380,10 +353,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                       const SizedBox(height: 8),
                     ],
-
-                    // [重要修正] 移除了 "Edit Profile" 按鈕
-                    // 因為編輯功能已經移至設定頁面，這裡不再需要顯示。
-                    
+                    // 已移除 Edit Profile 按鈕 (移至設定頁)
                   ] else ...[
                     // [看別人]
                     Row(
@@ -402,7 +372,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 12),
                         OutlinedButton(
-                          // 👇 [關鍵修正]：點擊後呼叫後端 API 取得 chatId，成功才跳轉
+                          // 👇 [關鍵修正]：點擊後呼叫後端 API 取得 chatId
                           onPressed: () async {
                             if (widget.userId == null) return;
 
@@ -420,7 +390,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => ChatRoomScreen(
-                                      chatId: chatId, // ✅ 傳入真實 ID
+                                      chatId: chatId,
                                       userName: displayName,
                                       userAvatar: displayAvatar,
                                     ),
@@ -476,11 +446,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     builder: (context, postProvider, child) {
                       final myPosts = postProvider.discoveryItems.where((item) {
                         if (isMe) {
-                          // 👇 [核心修正] 改用 ID 比對 (確保 post.dart 已新增 userId)
+                          // 👇 [核心修正] 改用 ID 比對
                           final currentUserId = context.read<AuthProvider>().userProfile['id']?.toString();
                           return item.userId == currentUserId;
                         } else {
-                          // 看別人的時候，比對貼文者 ID 是否等於 該頁面的 userId
                           return item.userId == widget.userId;
                         }
                       }).toList();
@@ -520,7 +489,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         child: Row(
           children: [
-            // 這裡原本有 Icon Container，已完全移除
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -546,7 +514,6 @@ class _ProfileStatItem extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     children: [
       Text(count, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      // 使用 FittedBox 防止文字過長導致破版
       FittedBox(
         fit: BoxFit.scaleDown,
         child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
