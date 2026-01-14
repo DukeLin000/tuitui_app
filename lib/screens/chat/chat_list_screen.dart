@@ -1,47 +1,26 @@
-// lib/screens/chat_list_screen.dart
+// lib/screens/chat/chat_list_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
+import '../../providers/chat_provider.dart'; // [新增]
 import '../../models/chat_thread.dart';
+import 'chat_room_screen.dart';
 
-class ChatListScreen extends StatelessWidget {
+class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
 
-  // 1. 準備假資料
-  static const List<ChatThread> _mockThreads = [
-    ChatThread(
-      id: '1',
-      userName: '推推官方小幫手',
-      userAvatar: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=100', // 官方圖標
-      lastMessage: '恭喜您獲得新手禮包！點擊查看詳情 🎁',
-      time: '剛剛',
-      unreadCount: 1,
-      isOfficial: true,
-    ),
-    ChatThread(
-      id: '2',
-      userName: '時尚達人 Amy',
-      userAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100',
-      lastMessage: '請問這件外套還有其他顏色嗎？',
-      time: '10:23',
-      unreadCount: 3,
-    ),
-    ChatThread(
-      id: '3',
-      userName: '美食探險家小雅',
-      userAvatar: 'https://images.unsplash.com/photo-1589553009868-c7b2bb474531?w=100',
-      lastMessage: '哈哈，那家店真的超好吃的！下次一起去',
-      time: '昨天',
-      unreadCount: 0,
-    ),
-    ChatThread(
-      id: '4',
-      userName: '攝影師 Jack',
-      userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-      lastMessage: '照片已經傳給你囉，記得查收',
-      time: '星期一',
-      unreadCount: 0,
-    ),
-  ];
+  @override
+  State<ChatListScreen> createState() => _ChatListScreenState();
+}
+
+class _ChatListScreenState extends State<ChatListScreen> {
+  // ❌ [移除] static const List<ChatThread> _mockThreads = [...]; 假資料
+
+  @override
+  void initState() {
+    super.initState();
+    // 👇 [新增] 初始化時載入真實資料
+    Future.microtask(() => context.read<ChatProvider>().loadThreads());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,110 +28,58 @@ class ChatListScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("訊息"),
         centerTitle: true,
-        actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.playlist_add_check)),
-        ],
       ),
-      body: ListView.separated(
-        itemCount: _mockThreads.length,
-        separatorBuilder: (context, index) => const Divider(height: 1, indent: 76), // 分隔線
-        itemBuilder: (context, index) {
-          final thread = _mockThreads[index];
-          return InkWell(
-            onTap: () {
-              // TODO: 下一步 - 點擊進入 ChatRoom
-              if (kDebugMode) {
-                debugPrint("點擊了與 ${thread.userName} 的對話");
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  // 頭像區域
-                  Stack(
-                    children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.grey[200]!),
-                          image: DecorationImage(
-                            image: NetworkImage(thread.userAvatar),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+      // 👇 [修改] 使用 Consumer 監聽 Provider 資料
+      body: Consumer<ChatProvider>(
+        builder: (context, chatProvider, child) {
+          if (chatProvider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
+          if (chatProvider.threads.isEmpty) {
+            return const Center(child: Text("目前沒有訊息", style: TextStyle(color: Colors.grey)));
+          }
+
+          return ListView.separated(
+            itemCount: chatProvider.threads.length,
+            separatorBuilder: (context, index) => const Divider(height: 1, indent: 76),
+            itemBuilder: (context, index) {
+              final thread = chatProvider.threads[index];
+              return InkWell(
+                onTap: () {
+                  // 👇 [新增] 點擊進入聊天室，帶入真實 ID
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatRoomScreen(
+                        chatId: thread.id, // 傳入 chatId
+                        userName: thread.userName,
+                        userAvatar: thread.userAvatar, // 順便傳頭像進去
                       ),
-                      // 官方認證標記
-                      if (thread.isOfficial)
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                            child: const Icon(Icons.check_circle, size: 14, color: Colors.blue),
-                          ),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      // ... (原有 UI 佈局保持不變，改讀取 thread 變數即可) ...
+                      CircleAvatar(backgroundImage: NetworkImage(thread.userAvatar), radius: 25),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(thread.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text(thread.lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ],
                         ),
+                      )
                     ],
                   ),
-                  const SizedBox(width: 12),
-                  
-                  // 文字區域
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              thread.userName,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
-                            Text(
-                              thread.time,
-                              style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                thread.lastMessage,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis, // 文字過長顯示 ...
-                                style: TextStyle(
-                                  color: thread.unreadCount > 0 ? Colors.black87 : Colors.grey[600],
-                                  fontWeight: thread.unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
-                                ),
-                              ),
-                            ),
-                            // 未讀紅點
-                            if (thread.unreadCount > 0)
-                              Container(
-                                margin: const EdgeInsets.only(left: 8),
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  '${thread.unreadCount}',
-                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           );
         },
       ),

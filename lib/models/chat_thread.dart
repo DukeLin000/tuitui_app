@@ -1,4 +1,3 @@
-// lib/models/chat_thread.dart
 class ChatThread {
   final String id;
   final String userName;
@@ -6,7 +5,7 @@ class ChatThread {
   final String lastMessage;
   final String time;
   final int unreadCount;
-  final bool isOfficial; // 是否為官方帳號 (可選)
+  final bool isOfficial;
 
   const ChatThread({
     required this.id,
@@ -17,4 +16,17 @@ class ChatThread {
     this.unreadCount = 0,
     this.isOfficial = false,
   });
+
+  // 👇 [新增] 解析後端 JSON
+  factory ChatThread.fromJson(Map<String, dynamic> json) {
+    return ChatThread(
+      id: json['id'].toString(),
+      userName: json['targetUser']['nickname'] ?? '未知用戶',
+      userAvatar: json['targetUser']['avatarUrl'] ?? 'https://via.placeholder.com/100',
+      lastMessage: json['lastMessage'] ?? '',
+      time: json['lastMessageTime'] ?? '', // 後端需回傳格式化好的時間，或前端再處理
+      unreadCount: json['unreadCount'] ?? 0,
+      isOfficial: false, // 視後端邏輯而定
+    );
+  }
 }

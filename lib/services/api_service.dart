@@ -1,23 +1,56 @@
 // lib/services/api_service.dart
 import 'dart:convert';
-import 'package:flutter/foundation.dart'; // [新增] 用於判斷平台 (kIsWeb)
+import 'package:flutter/foundation.dart'; // 用於判斷平台 (kIsWeb)
 import 'package:http/http.dart' as http;
 import '../models/post.dart';
 import '../models/cart_item.dart';
+import '../models/waterfall_item.dart'; // [新增] 為了 fetchProducts
 
 class ApiService {
-  // 💡 [修改] 自動判斷連線網址
-  // 透過 getter 動態回傳適合當前平台的 IP
+  // 💡 自動判斷連線網址
   static String get baseUrl {
     if (kIsWeb) {
-      // Web 瀏覽器: 使用 localhost
       return 'http://localhost:8080/api';
     } else if (defaultTargetPlatform == TargetPlatform.android) {
-      // Android 模擬器: 使用 10.0.2.2
       return 'http://10.0.2.2:8080/api';
     } else {
-      // iOS 模擬器或電腦版 App: 使用 localhost
       return 'http://localhost:8080/api';
+    }
+  }
+
+  // ==========================================
+  // 🛠️ 輔助方法 (Helper Methods)
+  // ==========================================
+  
+  // 統一處理 GET 請求
+  static Future<dynamic> _get(String endpoint) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl$endpoint'));
+      if (response.statusCode == 200) {
+        // 解決中文亂碼
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        print('Server Error ($endpoint): ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('Network Error ($endpoint): $e');
+      return [];
+    }
+  }
+
+  // 統一處理 POST 請求
+  static Future<bool> _post(String endpoint, Map<String, dynamic> body) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('Network Error ($endpoint): $e');
+      return false;
     }
   }
 
@@ -25,53 +58,40 @@ class ApiService {
   // 🔐 會員驗證 (Auth) 相關 API
   // ==========================================
 
-  // 1. 登入 (POST /api/auth/login)
+  // 1. 登入
   static Future<Map<String, dynamic>?> login(String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'), // 對應後端 UserController
+        Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode({'email': email, 'password': password}),
       );
 
       if (response.statusCode == 200) {
-        // 登入成功，回傳後端的 User DTO
         return jsonDecode(utf8.decode(response.bodyBytes));
-      } else {
-        print('Login Failed: ${response.body}');
-        return null;
       }
+      return null;
     } catch (e) {
-      print('Login Network Error: $e');
+      print('Login Error: $e');
       return null;
     }
   }
 
-  // 2. 註冊 (POST /api/auth/register)
+  // 2. 註冊
   static Future<Map<String, dynamic>?> register(String name, String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/register'), // 對應後端 UserController
+        Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,       // 對應後端的 payload.get("name")
-          'email': email,     // 對應後端的 payload.get("email")
-          'password': password, // 對應後端的 payload.get("password")
-        }),
+        body: jsonEncode({'name': name, 'email': email, 'password': password}),
       );
 
       if (response.statusCode == 200) {
-        print('Register Success');
         return jsonDecode(utf8.decode(response.bodyBytes));
-      } else {
-        print('Register Failed: ${response.body}');
-        return null;
       }
+      return null;
     } catch (e) {
-      print('Register Network Error: $e');
+      print('Register Error: $e');
       return null;
     }
   }
@@ -81,37 +101,86 @@ class ApiService {
   // ==========================================
 
   static Future<List<Post>> fetchPosts() async {
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/posts'));
-      if (response.statusCode == 200) {
-        // 解決中文亂碼: utf8.decode
-        final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data.map((json) => Post.fromJson(json)).toList();
-      } else {
-        print('Server Error (fetchPosts): ${response.statusCode}');
-        return [];
-      }
-    } catch (e) {
-      print('Network Error (fetchPosts): $e');
-      return []; 
+    final data = await _get('/posts');
+    if (data is List) {
+      return data.map((json) => Post.fromJson(json)).toList();
     }
+    return [];
   }
 
   static Future<bool> createPost(String userId, String content) async {
+    return _post('/posts', {'userId': userId, 'content': content});
+  }
+
+  // ==========================================
+  // 💬 聊天 (Chat) 相關 API - [新增與修改]
+  // ==========================================
+
+  // 1. 取得聊天列表
+  static Future<List<dynamic>> fetchChatThreads() async {
+    // 假設後端有提供 /api/chats
+    // 若後端尚未實作，這裡會返回空陣列，不會崩潰
+    final data = await _get('/chats');
+    return (data is List) ? data : [];
+  }
+
+  // 2. 取得特定聊天室的訊息
+  static Future<List<dynamic>> fetchMessages(String chatId) async {
+    final data = await _get('/chats/$chatId/messages');
+    return (data is List) ? data : [];
+  }
+
+  // 3. 發送訊息
+  static Future<bool> sendMessage(String chatId, String content) async {
+    return _post('/chats/$chatId/messages', {'content': content});
+  }
+
+  // 4. [新增] 建立或取得聊天室 (從個人頁私訊用)
+  static Future<String?> createChat(String targetUserId) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/posts'),
+        Uri.parse('$baseUrl/chats'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'userId': userId,
-          'content': content,
-        }),
+        body: jsonEncode({'targetUserId': targetUserId}),
       );
-      return response.statusCode == 200;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data['id'].toString(); // 回傳聊天室 ID (Chat ID)
+      } else {
+        print('Create Chat Failed: ${response.statusCode}');
+      }
     } catch (e) {
-      print('Create Post Error: $e');
-      return false;
+      print('Create Chat Network Error: $e');
     }
+    return null;
+  }
+
+  // ==========================================
+  // 🛍️ 商品 (Market) 相關 API - [新增]
+  // ==========================================
+
+  // [新增] 取得商品列表 (GET /api/products)
+  static Future<List<WaterfallItem>> fetchProducts() async {
+    final data = await _get('/products');
+    if (data is List) {
+      return data.map((json) {
+        return WaterfallItem(
+          id: json['id'].toString(),
+          userId: json['userId']?.toString() ?? '', // 預防 null
+          image: json['coverUrl'] ?? 'https://via.placeholder.com/300',
+          title: json['name'] ?? '無標題',
+          authorName: json['merchantName'] ?? '推推商家',
+          authorAvatar: 'https://cdn-icons-png.flaticon.com/512/1995/1995515.png',
+          likes: 0,
+          aspectRatio: 1.0,
+          price: (json['price'] as num?)?.toInt(),
+          type: ItemType.product,
+          isMerchant: true,
+        );
+      }).toList();
+    }
+    return [];
   }
 
   // ==========================================
@@ -136,20 +205,10 @@ class ApiService {
   }
 
   static Future<bool> addToCart(String userId, String productId, int quantity) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/commerce/cart'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'userId': userId,
-          'productId': productId,
-          'quantity': quantity
-        }),
-      );
-      return response.statusCode == 200;
-    } catch (e) {
-      print('Add to Cart Error: $e');
-      return false;
-    }
+    return _post('/commerce/cart', {
+      'userId': userId,
+      'productId': productId,
+      'quantity': quantity
+    });
   }
 }

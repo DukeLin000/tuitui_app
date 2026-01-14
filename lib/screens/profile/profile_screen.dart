@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/post_provider.dart';
+import '../../services/api_service.dart'; // [新增] 引入 API Service
 import '../../widgets/waterfall_feed.dart';
 import '../../widgets/responsive_container.dart';
 import '../../config/app_config.dart'; 
@@ -261,6 +262,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // 判斷是否顯示商家中心
     final isMerchant = isMe && AppConfig.enableCommerce && auth.isMerchant;
 
+    // [修正] 從 userProfile 讀取統計數據 (若無則顯示 0)
+    final String followingCount = isMe ? (auth.userProfile['followingCount']?.toString() ?? "0") : "0";
+    final String followersCount = isMe ? (auth.userProfile['followerCount']?.toString() ?? "0") : "0";
+    final String likeCount = isMe ? (auth.userProfile['likeCount']?.toString() ?? "0") : "0";
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
 
@@ -316,13 +322,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       CircleAvatar(radius: 40, backgroundImage: NetworkImage(displayAvatar)),
                       const SizedBox(width: 24),
-                      const Expanded(
+                      Expanded(
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _ProfileStatItem(count: "18", label: "Following"),
-                            _ProfileStatItem(count: "32", label: "Followers"),
-                            _ProfileStatItem(count: "128", label: "Like & Save"),
+                            // [修正] 改為使用變數，而非寫死
+                            _ProfileStatItem(count: followingCount, label: "Following"),
+                            _ProfileStatItem(count: followersCount, label: "Followers"),
+                            _ProfileStatItem(count: likeCount, label: "Like & Save"),
                           ],
                         ),
                       )
@@ -395,8 +402,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: 12),
                         OutlinedButton(
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => ChatRoomScreen(userName: displayName)));
+                          // 👇 [關鍵修正]：點擊後呼叫後端 API 取得 chatId，成功才跳轉
+                          onPressed: () async {
+                            if (widget.userId == null) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("正在連線..."), duration: Duration(seconds: 1)),
+                            );
+
+                            try {
+                              // 1. 呼叫 API 建立或取得現有聊天室
+                              final chatId = await ApiService.createChat(widget.userId!);
+
+                              // 2. 判斷結果並跳轉
+                              if (chatId != null && context.mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ChatRoomScreen(
+                                      chatId: chatId, // ✅ 傳入真實 ID
+                                      userName: displayName,
+                                      userAvatar: displayAvatar,
+                                    ),
+                                  ),
+                                );
+                              } else if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("無法開啟聊天室")),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("發生錯誤: $e")),
+                                );
+                              }
+                            }
                           },
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(color: Colors.grey[300]!),
@@ -502,5 +543,14 @@ class _ProfileStatItem extends StatelessWidget {
   final String label;
   const _ProfileStatItem({required this.count, required this.label});
   @override
-  Widget build(BuildContext context) => Column(children: [Text(count, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey))]);
+  Widget build(BuildContext context) => Column(
+    children: [
+      Text(count, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      // 使用 FittedBox 防止文字過長導致破版
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+      )
+    ]
+  );
 }

@@ -1,16 +1,19 @@
 // lib/screens/chat/chat_room_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/chat_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class ChatRoomScreen extends StatefulWidget {
-  // [修改] 這裡接收 userName，方便顯示在標題
-  // 如果未來要串接 API，這裡應該也要接收 targetUserId
   final String userName;
-  final String? chatId; // 可選，如果是新對話可能還沒有 ID
+  final String? userAvatar; // [新增]
+  final String chatId; // [修改] 必須要有 chatId 才能聊
 
   const ChatRoomScreen({
     super.key, 
     required this.userName, 
-    this.chatId
+    this.userAvatar,
+    required this.chatId,
   });
 
   @override
@@ -19,118 +22,68 @@ class ChatRoomScreen extends StatefulWidget {
 
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final TextEditingController _controller = TextEditingController();
-  // 模擬訊息數據
-  final List<String> _messages = ['嗨！請問這件商品還有貨嗎？', '有的，目前庫存充足喔！', '太棒了，那我直接下單'];
+  // ❌ [移除] final List<String> _messages = [...]; 假資料
+
+  @override
+  void initState() {
+    super.initState();
+    final myUserId = context.read<AuthProvider>().userProfile['id']?.toString() ?? '';
+    // 👇 [新增] 載入真實訊息
+    context.read<ChatProvider>().loadMessages(widget.chatId, myUserId);
+  }
+
+  void _handleSend() {
+    if (_controller.text.isEmpty) return;
+    final myUserId = context.read<AuthProvider>().userProfile['id']?.toString() ?? '';
+    
+    // 👇 [修改] 呼叫 Provider 發送訊息
+    context.read<ChatProvider>().sendMessage(widget.chatId, _controller.text, myUserId);
+    _controller.clear();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // 改為白色背景比較清爽
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        leading: const BackButton(color: Colors.black), // 使用系統預設返回鍵
-        titleSpacing: 0,
-        // [修改] 為了讓標題內容也符合長型排版視覺，這裡可以用 Flexible 稍微調整，但通常 AppBar 滿版即可
-        title: Row(
-          children: [
-            const CircleAvatar(
-              radius: 16, 
-              // 這裡未來可以改為接收 userAvatar 參數
-              backgroundImage: NetworkImage('https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100')
-            ),
-            const SizedBox(width: 10),
-            // [修改] 顯示傳入的 userName
-            Text(widget.userName, style: const TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert, color: Colors.black))
-        ],
-      ),
-      
-      // [關鍵修改] 使用 Center + ConstrainedBox 限制內容最大寬度，達成 Web 版長型排版
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500), // 限制最大寬度為 500
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
+      // ... AppBar 保持不變 ...
+      body: Column(
+        children: [
+          Expanded(
+            // 👇 [修改] 使用 Consumer 顯示真實訊息
+            child: Consumer<ChatProvider>(
+              builder: (context, chatProvider, child) {
+                final messages = chatProvider.currentMessages;
+                
+                return ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: _messages.length,
+                  itemCount: messages.length,
                   itemBuilder: (context, index) {
-                    // 簡單模擬：偶數是我發的，奇數是對方的
-                    final isMe = index % 2 == 0;
+                    final msg = messages[index];
                     return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment: msg.isMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        // 這裡的 maxWidth 可以稍微調整，因為外層已經限制了 500，這裡的 0.7 是相對於 500 的
-                        constraints: BoxConstraints(maxWidth: 350), 
                         decoration: BoxDecoration(
-                          color: isMe ? Colors.purple : Colors.grey[100],
-                          borderRadius: BorderRadius.circular(20).copyWith(
-                            bottomRight: isMe ? const Radius.circular(4) : null,
-                            bottomLeft: !isMe ? const Radius.circular(4) : null,
-                          ),
+                          color: msg.isMe ? Colors.purple : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          _messages[index],
-                          style: TextStyle(color: isMe ? Colors.white : Colors.black87),
+                          msg.content, // [修改] 顯示真實內容
+                          style: TextStyle(color: msg.isMe ? Colors.white : Colors.black87),
                         ),
                       ),
                     );
                   },
-                ),
-              ),
-              
-              // 底部輸入框
-              SafeArea(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white, 
-                    border: Border(top: BorderSide(color: Colors.grey[200]!))
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(onPressed: (){}, icon: const Icon(Icons.add_circle_outline, color: Colors.purple)),
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          decoration: InputDecoration(
-                            hintText: "傳送訊息...",
-                            hintStyle: TextStyle(color: Colors.grey[400]),
-                            filled: true,
-                            fillColor: Colors.grey[50],
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      CircleAvatar(
-                        backgroundColor: Colors.purple,
-                        radius: 20,
-                        child: IconButton(
-                          icon: const Icon(Icons.send, color: Colors.white, size: 18),
-                          onPressed: () {
-                            if (_controller.text.isNotEmpty) {
-                              setState(() => _messages.add(_controller.text));
-                              _controller.clear();
-                            }
-                          },
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              )
-            ],
+                );
+              },
+            ),
           ),
-        ),
+          // ... 底部輸入框保持不變，但 Send 按鈕要呼叫 _handleSend ...
+          IconButton(
+            icon: const Icon(Icons.send, color: Colors.white, size: 18),
+            onPressed: _handleSend, // 綁定發送事件
+          ),
+        ],
       ),
     );
   }

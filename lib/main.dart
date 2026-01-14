@@ -1,10 +1,11 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart'; // [新增] 引入多語言套件
+import 'package:flutter_localizations/flutter_localizations.dart'; 
 import 'package:provider/provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/auth_provider.dart'; 
 import 'providers/post_provider.dart';
+import 'providers/chat_provider.dart'; // [新增 1] 引入 ChatProvider 檔案
 import 'screens/main/main_screen.dart';
 
 void main() {
@@ -14,6 +15,8 @@ void main() {
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => PostProvider()),
+        // [新增 2] 註冊 ChatProvider，這樣聊天室頁面才能找到它
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: const TuituiApp(),
     ),
@@ -45,15 +48,14 @@ class TuituiApp extends StatelessWidget {
           ),
         ),
       ),
-      // [新增] 語系設定，讓 DatePicker 支援中文介面，否則會報錯
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [
-        Locale('zh', 'TW'), // 繁體中文
-        Locale('en', 'US'), // 英文
+        Locale('zh', 'TW'), 
+        Locale('en', 'US'), 
       ],
       home: const MainScreen(),
     );
