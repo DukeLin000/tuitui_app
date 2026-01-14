@@ -27,6 +27,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // 👇 [關鍵新增] 畫面一載入，主動去後端抓貼文資料！
+    // 這樣登入後就會直接顯示內容，不需要發文才能觸發。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PostProvider>().fetchPosts();
+    });
   }
 
   @override
@@ -54,8 +60,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           floatHeaderSlivers: true,
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
-              // ★★★ [關鍵修正] 必須用 SliverOverlapAbsorber 包裹 SliverAppBar ★★★
-              // 這樣下方的 Injector 才能抓到正確的高度，解決崩潰問題
+              // ★★★ [關鍵 UI 修正] 必須用 SliverOverlapAbsorber 包裹 SliverAppBar ★★★
+              // 這樣下方的 Injector 才能抓到正確的高度，解決 TabBarView 內部滑動時被蓋住的問題
               SliverOverlapAbsorber(
                 handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
                 sliver: SliverAppBar(
@@ -134,9 +140,30 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               // ---------------------------------------------------------------
               Consumer<PostProvider>(
                 builder: (context, postProvider, child) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                    child: WaterfallFeed(items: postProvider.discoveryItems),
+                  // 這裡我們需要同樣處理 NestedScrollView 的重疊問題，
+                  // 但因為 WaterfallFeed 內部實作可能較複雜，
+                  // 這裡建議在 WaterfallFeed 外部包一個 Builder + CustomScrollView 
+                  // 或者如果 WaterfallFeed 本身就是 ScrollView，則需要傳入 controller。
+                  // 
+                  // 為了保持您原本的 WaterfallFeed 元件通用性，這裡最簡單的做法是：
+                  // 使用 Builder 獲取 context，並使用 CustomScrollView 包裹內容
+                  return Builder(
+                    builder: (BuildContext context) {
+                      return CustomScrollView(
+                        key: const PageStorageKey<String>('discovery'),
+                        slivers: <Widget>[
+                          SliverOverlapInjector(
+                            handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                          ),
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+                            sliver: SliverToBoxAdapter(
+                              child: WaterfallFeed(items: postProvider.discoveryItems),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   );
                 },
               ),
@@ -154,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       return CustomScrollView(
                         key: const PageStorageKey<String>('following'),
                         slivers: <Widget>[
-                          // 這個 Injector 現在可以正確工作了，因為上面有了 Absorber
+                          // 這個 Injector 配合上面的 Absorber，確保內容不會被 App Bar 蓋住
                           SliverOverlapInjector(
                             handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
                           ),
