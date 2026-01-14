@@ -50,8 +50,9 @@ class ChatProvider extends ChangeNotifier {
     _currentMessages.add(tempMsg);
     notifyListeners();
 
-    // 2. 呼叫後端
-    final success = await ApiService.sendMessage(chatId, content);
+    // 2. 呼叫後端 [修改] 傳入 myUserId (senderId)
+    // 配合 ApiService 的修改，確保後端能收到正確的發送者 ID
+    final success = await ApiService.sendMessage(chatId, content, myUserId);
     
     // 3. 如果失敗，應該要移除 tempMsg 並提示 (這裡簡化處理)
     if (success) {

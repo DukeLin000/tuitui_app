@@ -130,9 +130,12 @@ class ApiService {
     return (data is List) ? data : [];
   }
 
-  // 3. 發送訊息
-  static Future<bool> sendMessage(String chatId, String content) async {
-    return _post('/chats/$chatId/messages', {'content': content});
+  // 3. 發送訊息 [修改]：加入 senderId 參數，確保後端能正確識別發送者
+  static Future<bool> sendMessage(String chatId, String content, String senderId) async {
+    return _post('/chats/$chatId/messages', {
+      'content': content,
+      'senderId': senderId,
+    });
   }
 
   // 4. [新增] 建立或取得聊天室 (從個人頁私訊用)
