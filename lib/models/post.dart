@@ -3,7 +3,7 @@ import 'waterfall_item.dart';
 
 class Post {
   final String id;
-  // 👇 [新增] 儲存作者 ID (UUID)，用於辨識是否為自己的貼文
+  // 👇 [核心] 儲存作者 ID (UUID)，用於辨識是否為自己的貼文
   final String userId;
   final String authorName;
   final String authorAvatar;
@@ -15,15 +15,14 @@ class Post {
   final String timestamp;
   final bool isMerchant;
 
-  // [原有] 記錄當前用戶是否已按讚
+  // [原有] 記錄當前用戶是否已按讚 (目前後端 DTO 還沒給這個欄位，預設 false)
   final bool isLikedByMe;
 
-  // [新增] 標籤列表 (例如: ["美食", "好物推薦"])
+  // [新增] 標籤列表
   final List<String> tags;
 
   const Post({
     required this.id,
-    // 👇 [新增] 建構子加入 userId
     required this.userId,
     required this.authorName,
     required this.authorAvatar,
@@ -35,73 +34,82 @@ class Post {
     required this.timestamp,
     this.isMerchant = false,
     this.isLikedByMe = false,
-    // [新增] 預設為空列表，避免 null 錯誤
     this.tags = const [],
   });
 
   // ==========================================
-  // 👇 重點修改：新增 fromJson 解析後端資料
+  // 👇 重點修改：適配 Spring Boot PostDto 結構
   // ==========================================
   factory Post.fromJson(Map<String, dynamic> json) {
-    // 1. [原有邏輯] 處理圖片
+    
+    // 1. [修正] 處理圖片
+    // 後端 PostDto 回傳的是 "imageUrls": ["url1", "url2"]
     String coverImage = 'https://via.placeholder.com/300';
-    if (json['images'] != null && (json['images'] as List).isNotEmpty) {
-      coverImage = json['images'][0]['imageUrl'] ?? coverImage;
+    if (json['imageUrls'] != null && (json['imageUrls'] as List).isNotEmpty) {
+      coverImage = json['imageUrls'][0]; 
+    } 
+    // 相容舊版資料結構 (防呆)
+    else if (json['images'] != null && (json['images'] as List).isNotEmpty) {
+      // 舊結構可能是物件 List
+      var firstImg = json['images'][0];
+      if (firstImg is String) {
+        coverImage = firstImg;
+      } else if (firstImg is Map && firstImg['imageUrl'] != null) {
+        coverImage = firstImg['imageUrl'];
+      }
     }
 
-    // 2. [新增邏輯] 處理標籤
-    // 檢查後端是否有傳 'tags'，如果有的話轉成 List<String>，否則給空陣列
+    // 2. [新增] 處理標籤
     List<String> parsedTags = [];
     if (json['tags'] != null) {
-      // List.from 確保將 dynamic list 安全轉為 String list
       parsedTags = List<String>.from(json['tags']);
     }
 
-    // 3. [修正邏輯] 解析作者資訊 (優先使用 user 物件中的資料)
+    // 3. [關鍵修正] 解析作者資訊 (對接 PostDto 的 'author' 欄位)
     String parsedAuthorName = '匿名用戶';
     String parsedAuthorAvatar = 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100';
-    // 👇 [新增] 解析 userId
     String parsedUserId = '';
+    bool parsedIsMerchant = false;
 
-    if (json['user'] != null) {
-      parsedAuthorName = json['user']['nickname'] ?? parsedAuthorName;
-      parsedAuthorAvatar = json['user']['avatarUrl'] ?? parsedAuthorAvatar;
-      // 👇 從 user 物件拿 ID (轉字串以防萬一)
-      if (json['user']['id'] != null) {
-        parsedUserId = json['user']['id'].toString();
+    // 優先讀取 DTO 的 'author' 欄位
+    if (json['author'] != null) {
+      final authorData = json['author'];
+      parsedAuthorName = authorData['nickname'] ?? authorData['username'] ?? parsedAuthorName;
+      parsedAuthorAvatar = authorData['avatarUrl'] ?? parsedAuthorAvatar;
+      parsedIsMerchant = authorData['merchant'] ?? false; // UserDto 裡有 isMerchant
+      
+      if (authorData['id'] != null) {
+        parsedUserId = authorData['id'].toString();
       }
-    } else if (json['userId'] != null) {
-      // 降級處理：如果沒有 user 物件但有 userId
-      parsedAuthorName = json['userId'].toString();
-      // 👇 從根目錄拿 ID
-      parsedUserId = json['userId'].toString();
+    } 
+    // 相容舊版 'user' 欄位
+    else if (json['user'] != null) {
+      final userData = json['user'];
+      parsedAuthorName = userData['nickname'] ?? parsedAuthorName;
+      parsedAuthorAvatar = userData['avatarUrl'] ?? parsedAuthorAvatar;
+      if (userData['id'] != null) {
+        parsedUserId = userData['id'].toString();
+      }
     }
 
     return Post(
-      // [原有邏輯] ID 轉 String
-      id: json['id'].toString(),
-      // 👇 [新增] 帶入解析好的 userId
+      id: json['id']?.toString() ?? '',
       userId: parsedUserId,
-      // [修正邏輯] 使用解析後的真實暱稱
       authorName: parsedAuthorName,
-      // [修正邏輯] 使用解析後的真實頭像
       authorAvatar: parsedAuthorAvatar,
-      verified: false,
+      verified: false, // DTO 暫時沒回傳此欄位
       content: json['content'] ?? '',
       image: coverImage,
-      likes: json['likeCount'] ?? 0,
-      comments: json['commentCount'] ?? 0,
-      timestamp: '剛剛',
-      isMerchant: false,
-      // [新增] 帶入解析好的標籤
+      likes: json['likeCount'] ?? 0,     // 對接 PostDto 的 likeCount
+      comments: json['commentCount'] ?? 0, // 對接 PostDto 的 commentCount
+      timestamp: '剛剛', // 後端 DTO 回傳的是 createdAt (如 "2024-01-01T12:00:00")，前端若要顯示時間差需另外寫 util
+      isMerchant: parsedIsMerchant,
       tags: parsedTags,
     );
   }
 
-  // [原有] copyWith 方法保持不變，但加入 tags 支援
   Post copyWith({
     String? id,
-    // 👇 [新增] copyWith 支援修改 userId
     String? userId,
     String? authorName,
     String? authorAvatar,
@@ -113,12 +121,10 @@ class Post {
     String? timestamp,
     bool? isMerchant,
     bool? isLikedByMe,
-    // [新增] 允許修改 tags
     List<String>? tags,
   }) {
     return Post(
       id: id ?? this.id,
-      // 👇 [新增] 如果沒傳入新 userId，就用舊的
       userId: userId ?? this.userId,
       authorName: authorName ?? this.authorName,
       authorAvatar: authorAvatar ?? this.authorAvatar,
@@ -130,19 +136,16 @@ class Post {
       timestamp: timestamp ?? this.timestamp,
       isMerchant: isMerchant ?? this.isMerchant,
       isLikedByMe: isLikedByMe ?? this.isLikedByMe,
-      // [新增] 如果沒傳入新 tags，就用舊的
       tags: tags ?? this.tags,
     );
   }
 
-  // [原有] 轉為瀑布流物件的方法
   WaterfallItem toWaterfallItem() {
-    // 避免 id 是非數字字串導致 hashCode 出錯的保險寫法
+    // 簡單的 hashCode 轉型，避免非數值 ID 報錯
     final double randomRatio = (id.hashCode % 5 + 10) / 10.0;
     return WaterfallItem(
       id: id,
-      // 👇 [關鍵修正] 這裡必須傳入 userId，WaterfallItem 才能正確記錄作者
-      userId: userId,
+      userId: userId, // 傳遞正確的 userId
       image: image,
       title: content,
       authorName: authorName,
